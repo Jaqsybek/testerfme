@@ -1,0 +1,184 @@
+/* Additional custom styles beyond Bootstrap */
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.question-card {
+  position: relative;
+  border-left: 4px solid var(--bs-secondary);
+}
+
+.current-question {
+  border-left-color: var(--bs-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.question-card .question-number {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 30px;
+  height: 30px;
+  background-color: var(--bs-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.question-card .form-check {
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.question-card .form-check:hover {
+  background-color: rgba(var(--bs-secondary-rgb), 0.1);
+}
+
+.correct-answer {
+  border-left-color: var(--bs-success) !important;
+  background-color: rgba(var(--bs-success-rgb), 0.05);
+}
+
+.incorrect-answer {
+  border-left-color: var(--bs-danger) !important;
+  background-color: rgba(var(--bs-danger-rgb), 0.05);
+}
+
+.option-correct {
+  background-color: rgba(var(--bs-success-rgb), 0.2) !important;
+}
+
+.option-incorrect {
+  background-color: rgba(var(--bs-danger-rgb), 0.2) !important;
+}
+
+/* Loader animation */
+.loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--bs-secondary);
+  border-bottom-color: var(--bs-primary);
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Test navigation and keyboard controls */
+.test-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.form-check-label strong {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  background-color: var(--bs-secondary);
+  color: white;
+  margin-right: 8px;
+}
+
+.question-card .form-check input:checked + label strong {
+  background-color: var(--bs-primary);
+}
+
+/* Incorrect answers list styling */
+#incorrect-answers-container .list-group-item {
+  transition: all 0.3s ease;
+}
+
+#incorrect-answers-container .list-group-item:hover {
+  background-color: rgba(var(--bs-secondary-rgb), 0.05);
+}
+
+/* Media queries for better mobile view */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 10px;
+    padding-right: 10px;
+    max-width: 100%;
+  }
+  
+  .question-card {
+    padding: 15px;
+    margin-bottom: 10px;
+  }
+  
+  .test-progress {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .test-progress .badge {
+    margin-bottom: 10px;
+  }
+  
+  /* Ensure options fit in the viewport */
+  .options-container {
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-bottom: 10px;
+  }
+  
+  /* Make the navigation buttons sticky at the bottom */
+  .navigation-buttons {
+    position: sticky;
+    bottom: 0;
+    background-color: var(--bs-body-bg);
+    padding: 10px 0;
+    z-index: 100;
+    width: 100%;
+    box-shadow: 0 -5px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Adjust padding for fixed navbar */
+  #test-container {
+    padding-bottom: 70px;
+  }
+  
+  /* Make keyboard hint smaller */
+  .keyboard-hint {
+    font-size: 14px;
+    padding: 8px;
+  }
+  
+  /* Make form controls easier to tap */
+  .form-check {
+    padding: 12px;
+    margin-bottom: 5px;
+  }
+  
+  .form-check-label {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+  
+  .form-check-input {
+    width: 20px;
+    height: 20px;
+    margin-top: 3px;
+  }
+}

@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Медицинский тестирующий комплекс</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <style>
+    /* Custom styles */
+    body {
+      padding-top: 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .content {
+      flex: 1;
+    }
+    
+    footer {
+      padding: 20px 0;
+      margin-top: 40px;
+      border-top: 1px solid var(--bs-border-color);
+    }
+    
+    .test-container {
+      margin-top: 2rem;
+    }
+    
+    .question-box {
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      margin-bottom: 2rem;
+    }
+    
+    .question-text {
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-check {
+      margin-bottom: 0.75rem;
+    }
+    
+    .navigation-buttons {
+      margin-top: 2rem;
+    }
+    
+    .question-number {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+    
+    .selected-answer {
+      background-color: var(--bs-primary-bg-subtle);
+    }
+    
+    .correct-answer {
+      background-color: var(--bs-success-bg-subtle) !important;
+      border-left: 3px solid var(--bs-success);
+    }
+    
+    .incorrect-answer {
+      background-color: var(--bs-danger-bg-subtle) !important;
+      border-left: 3px solid var(--bs-danger);
+    }
+    
+    .result-box {
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+      background-color: var(--bs-dark-bg-subtle);
+    }
+    
+    .result-label {
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      color: var(--bs-secondary);
+    }
+    
+    .result-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    
+    .loader {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, .3);
+      border-radius: 50%;
+      border-top-color: var(--bs-primary);
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 768px) {
+      .navigation-buttons button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container content">
+    <div class="row mb-4">
+      <div class="col">
+        <h1 class="display-5">Медицинский тестирующий комплекс</h1>
+        <p class="lead">Проверьте свои знания с помощью тестов по различным медицинским дисциплинам</p>
+      </div>
+    </div>
+    
+    <!-- Категории тестов -->
+    <div id="category-container" class="mb-4"></div>
+    
+    <!-- Селектор тестов -->
+    <div id="test-selector-container" class="row mb-4 d-none">
+      <div class="col-md-8">
+        <div class="input-group">
+          <select id="test-selector" class="form-select" aria-label="Выбор теста">
+            <option value="">Сначала выберите категорию</option>
+          </select>
+          <button id="run-all-tests-btn" class="btn btn-primary">
+            <i class="fas fa-play-circle me-2"></i>Пройти все тесты в категории
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Информация о тесте -->
+    <div id="test-info" class="alert alert-primary d-none">
+      <i class="fas fa-info-circle me-2"></i>
+      Текущий тест содержит <span id="question-count">0</span> вопросов
+    </div>
+    
+    <!-- Контейнер теста -->
+    <div id="test-container" class="test-container"></div>
+    
+    <!-- Результаты теста -->
+    <div id="results-container" class="results-container d-none">
+      <h3 class="text-center mb-4">Результаты теста</h3>
+      
+      <div class="result-summary mb-4">
+        <div class="row text-center">
+          <div class="col-md-4">
+            <div class="result-box">
+              <div class="result-label">Правильные ответы</div>
+              <div class="result-value" id="score-fraction">0/0</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="result-box">
+              <div class="result-label">Процент</div>
+              <div class="result-value" id="score-percentage">0%</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="result-box">
+              <div class="result-label">Оценка</div>
+              <div class="result-value">
+                <div class="progress" style="height: 25px;">
+                  <div id="score-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="d-flex justify-content-center gap-3 mb-4">
+        <button id="retry-btn" class="btn btn-primary">
+          <i class="fas fa-redo me-2"></i>Повторить тест
+        </button>
+        <button id="new-test-btn" class="btn btn-outline-primary">
+          <i class="fas fa-list me-2"></i>Выбрать другой тест
+        </button>
+      </div>
+    </div>
+    
+    <!-- Неправильные ответы -->
+    <div id="incorrect-answers-container" class="incorrect-answers-container d-none"></div>
+  </div>
+  
+  <footer>
+    <div class="container">
+      <div class="row">
+        <div class="col text-center">
+          <p class="mb-0">Медицинский тестирующий комплекс © 2025</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+  
+  <script>
+    // Global variables
+    let currentQuestions = [];
+    let currentTestName = '';
+    let currentQuestionIndex = 0;
+    let userAnswers = [];
+    let incorrectQuestions = [];
+    let currentCategory = null;
+    
+    // Переменные для категории тестов
+    let allCategoryTests = [];
+    let currentTestIndex = 0;
+    
+    // Document ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Document ready, initializing application');
+      init();
+      
+      // Event listeners for retry and choose new test buttons
+      document.getElementById('retry-btn').addEventListener('click', function() {
+        // Повторить текущий тест
+        resetTest();
+        document.getElementById('results-container').classList.add('d-none');
+        document.getElementById('incorrect-answers-container').classList.add('d-none');
+      });
+      
+      document.getElementById('new-test-btn').addEventListener('click', function() {
+        // Сбросить переменные и вернуться к выбору тестов
+        allCategoryTests = [];
+        currentTestIndex = 0;
+        
+        document.getElementById('results-container').classList.add('d-none');
+        document.getElementById('incorrect-answers-container').classList.add('d-none');
+        document.getElementById('test-container').innerHTML = '';
+        document.getElementById('test-info').classList.add('d-none');
+        document.getElementById('test-selector').value = '';
+      });
+    });
+    
+    // Отдельный глобальный обработчик клавиатуры
+    window.onkeydown = function(e) {
+      // Проверяем, что вопросы загружены и тест активен
+      if (currentQuestions.length === 0) {
+        return; // Игнорируем нажатия клавиш, если вопросы не загружены
+      }
+      
+      // Проверяем, что результаты не отображаются (тест в процессе)
+      const resultsContainer = document.getElementById('results-container');
+      if (!resultsContainer || !resultsContainer.classList.contains('d-none')) {
+        return;
+      }
+      
+      // Проверка, что контейнер теста не пустой и есть текущий вопрос
+      const currentQuestion = document.querySelector('.current-question');
+      if (!currentQuestion) {
+        return; // Игнорируем нажатия клавиш, если нет текущего вопроса
+      }
+      
+      // Number keys 1-5
+      if (e.key >= '1' && e.key <= '5') {
+        const optionIndex = parseInt(e.key) - 1;
+        const currentOptions = document.querySelectorAll('.current-question .form-check-input');
+        
+        if (currentOptions.length > optionIndex) {
+          const selectedInput = currentOptions[optionIndex];
+          
+          // If the input is already disabled (answer already shown)
+          if (selectedInput.disabled) {
+            // If pressing the same key as before, go to next question
+            if (userAnswers[currentQuestionIndex] === optionIndex) {
+              goToNextQuestion();
+            }
+            return;
+          }
+          
+          // Select the option
+          selectedInput.checked = true;
+          userAnswers[currentQuestionIndex] = optionIndex;
+          
+          // Show the correct answer immediately
+          highlightCorrectAnswer();
+        }
+      }
+      
+      // Right arrow key to go to next question
+      if (e.key === 'ArrowRight') {
+        goToNextQuestion();
+      }
+      
+      // Left arrow key to go to previous question
+      if (e.key === 'ArrowLeft') {
+        goToPreviousQuestion();
+      }
+      
+      // Enter key to confirm the selected answer
+      if (e.key === 'Enter') {
+        const checkedOption = document.querySelector('.current-question .form-check-input:checked');
+        if (checkedOption && !checkedOption.disabled) {
+          // Only highlight if not already highlighted
+          highlightCorrectAnswer();
+        }
+      }
+    };
+    
+    // Initialize application
+    async function init() {
+      try {
+        // Предопределенные категории тестов для автономной версии
+        const categories = {
+          'main': 'Основные тесты',
+          'additional': 'Дополнительные тесты',
+          'uploaded': 'Загруженные тесты'
+        };
+        
+        // Create category elements
+        const categoryContainer = document.getElementById('category-container');
+        categoryContainer.innerHTML = '<h3 class="mb-3">Выберите категорию тестов</h3>';
+        
+        // Create buttons for each category
+        const categoryButtonsRow = document.createElement('div');
+        categoryButtonsRow.className = 'row mb-4';
+        
+        for (const [categoryId, categoryName] of Object.entries(categories)) {
+          const col = document.createElement('div');
+          col.className = 'col-md-4 mb-3';
+          
+          const button = document.createElement('button');
+          button.className = 'btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center';
+          button.setAttribute('data-category', categoryId);
+          button.innerHTML = `<span>${categoryName}</span>`;
+          
+          button.addEventListener('click', function() {
+            // Mark this button as active and deactivate others
+            document.querySelectorAll('#category-container button').forEach(btn => {
+              btn.classList.remove('active');
+            });
+            this.classList.add('active');
+            
+            // Store selected category
+            currentCategory = categoryId;
+            
+            // Load tests for this category
+            loadTestsForCategory(categoryId);
+          });
+          
+          col.appendChild(button);
+          categoryButtonsRow.appendChild(col);
+        }
+        
+        categoryContainer.appendChild(categoryButtonsRow);
+        
+        // Setup test selector
+        const selector = document.getElementById('test-selector');
+        selector.innerHTML = '<option value="">Сначала выберите категорию</option>';
+        
+        // Handle test selection
+        selector.onchange = async () => {
+          if (!selector.value) return;
+          
+          // Get the selected category
+          if (!currentCategory) {
+            alert('Пожалуйста, выберите категорию тестов');
+            selector.value = '';
+            return;
+          }
+          
+          currentTestName = selector.options[selector.selectedIndex].textContent;
+          
+          // Show loading message
+          document.getElementById('test-container').innerHTML = `
+            <div class="text-center py-5">
+              <span class="loader"></span>
+              <p class="mt-3">Загрузка содержимого теста...</p>
+            </div>
+          `;
+          
+          try {
+            // В автономной версии загружаем тестовый контент в зависимости от выбранного теста
+            let content = '';
+            
+            if (selector.value === 'Тест 1 (5 вопросов)') {
+              content = 
+              '?При какой болезни дегенерация нервных клеток чаще локализуется в черной субстанции?\n+болезнь Паркинсона\n-энцефалит\n-склероз\n-менингит\n-абсцесс\n' +
+              '?Дофаминергическое лечение болезни Паркинсона включает:\n-амантадин\n+L-дофа+бенсеразид\n-агонисты дофаминовых рецепторов\n-бромокриптин\n-все ответы верны\n' +
+              '?Выраженность клинических проявлений при болезни Паркинсона зависит от:\n-тяжести заболевания\n-длительности заболевания\n-возраста больного\n-сопутствующих заболеваний\n+степени дегенерации дофаминергических нейронов\n' +
+              '?Для синдрома паркинсонизма характерно все, кроме:\n-гипомимии\n-брадикинезии\n-ригидности мышц\n+атаксии\n-тремора покоя\n' +
+              '?Наиболее частой причиной развития паркинсонизма является:\n-сосудистые заболевания головного мозга\n-эпилепсия\n+болезнь Паркинсона\n-прием нейролептиков\n-нейроинфекции\n';
+            } else if (selector.value === 'Тест 2 (10 вопросов)') {
+              content = 
+              '?Что такое аутосомно-доминантное наследование?\n+атаксия Фридрейха\n-мышечная дистрофия Дюшенна\n-атаксия-телеангиэктазия\n-наследственная моторно-сенсорная невропатия Шарко-Мари-Тута 1-го типа\n-наследственная моторно-сенсорная невропатия Шарко-Мари-Тута 2-го типа\n' +
+              '?Мышечная дистрофия Дюшенна и Беккера обусловлена дефектом белка:\n-титина\n-десмина\n+дистрофина\n-дисферлина\n-ламинина\n' +
+              '?Какие изменения на МРТ головного мозга наблюдаются при болезни Альцгеймера?\n-инфаркты\n-геморрагии\n+атрофия\n-зоны глиоза\n-лейкоареоз\n' +
+              '?Патогенез старческой деменции в основном связан с\n-накоплением амилоида\n-дефицитом нейромедиаторов\n-нарушением кровообращения\n-старческими бляшками\n+всё перечисленное\n' +
+              '?При болезни Паркинсона наиболее характерным признаком является:\n-асимметричный тремор в покое\n-гипомимия\n-нарушения ходьбы\n-брадикинезия\n+все вышеперечисленное\n' +
+              '?Какие изменения на МРТ головного мозга характерны для сосудистой деменции?\n-гидроцефалия\n-атрофия\n+лакунарные инфаркты\n-вентрикуломегалия\n-опухоли\n' +
+              '?Диагностическим признаком рассеянного склероза является наличие:\n-инфарктов в белом веществе головного мозга\n+очагов демиелинизации в белом веществе\n-сосудистых мальформаций\n-кальцификатов\n-зон атрофии\n' +
+              '?Какие симптомы не типичны для рассеянного склероза:\n-нистагм\n-интенционный тремор\n-острое нарушение зрения\n+гемипарез\n-нарушения тазовых органов\n' +
+              '?Что не относится к эпилептическим припадкам?\n-генерализованный тонико-клонический припадок\n-миоклонический припадок\n-фокальный адверсивный припадок\n+транзиторная ишемическая атака\n-абсанс\n' +
+              '?Что вызывает эпилептический статус?\n-прогрессирующая вирусная инфекция\n-прием противоэпилептических препаратов\n+отмена противоэпилептических препаратов\n-черепно-мозговая травма\n-опухоль головного мозга\n';
+            } else if (selector.value === 'Тест 3 (15 вопросов)') {
+              content = 
+              '?Какие из перечисленных состояний не являются заболеваниями внутреннего уха?\n-болезнь Меньера\n-доброкачественное пароксизмальное позиционное головокружение\n-вестибулярный нейронит\n+невринома слухового нерва\n-лабиринтит\n' +
+              '?При неврологическом осмотре шейного отдела позвоночника не оценивается:\n-объем движений во всех направлениях\n-болезненность при пальпации остистых отростков\n-напряжение паравертебральных мышц\n+симптом Ласега\n-болезненность при пальпации точек выхода затылочных нервов\n' +
+              '?Что не относится к первичным головным болям?\n-мигрень\n-головная боль напряжения\n+головная боль при менингите\n-кластерная головная боль\n-тригеминальные вегетативные цефалгии\n' +
+              '?Какой из препаратов используется для купирования приступа мигрени?\n-парацетамол\n-аспирин\n+суматриптан\n-диклофенак\n-нимесулид\n' +
+              '?Какое исследование не является обязательным при диагностике причин головокружения?\n-МРТ головного мозга\n-аудиометрия\n-калорическая проба\n-вращательная проба\n+МРТ шейного отдела позвоночника\n' +
+              '?Диагностическим критерием полиневропатии не является:\n-симметричное поражение\n-преимущественное поражение дистальных отделов конечностей\n+гиперрефлексия\n-нарушение поверхностной чувствительности\n-вегетативные нарушения\n' +
+              '?Какой нерв чаще всего поражается при туннельных невропатиях?\n-локтевой\n+срединный\n-бедренный\n-малоберцовый\n-большеберцовый\n' +
+              '?Какое исследование является золотым стандартом диагностики миастении?\n-КТ грудной клетки\n-антитела к рецепторам ацетилхолина\n+декремент-тест\n-антитела к мышечно-специфической тирозин-киназе\n-электромиография\n' +
+              '?Основным патогенетическим механизмом формирования острого нарушения мозгового кровообращения является:\n-воспаление\n-демиелинизация\n+ишемия\n-повышение внутричерепного давления\n-нейродегенерация\n' +
+              '?Лечение ишемического инсульта не включает:\n-тромболитическую терапию\n-нейропротекцию\n-вторичную профилактику\n+нейрохирургическое лечение\n-антикоагулянтную терапию\n' +
+              '?Какой метод нейровизуализации является методом выбора при подозрении на инсульт в первые часы?\n-МРТ в стандартных режимах\n-МР-ангиография\n+КТ головного мозга\n-церебральная ангиография\n-ПЭТ\n' +
+              '?Для ишемического инсульта характерны следующие симптомы, кроме:\n-гемипарез\n-афазия\n-гемианопсия\n+общемозговые симптомы\n-атаксия\n' +
+              '?Каким не может быть подтип ишемического инсульта по механизму развития?\n-атеротромботический\n-кардиоэмболический\n-лакунарный\n+метаболический\n-инсульт по типу гемодинамического\n' +
+              '?Какой препарат не используется для лечения мигрени?\n-триптаны\n-бета-блокаторы\n-антидепрессанты\n+нейролептики\n-блокаторы кальциевых каналов\n' +
+              '?Какой фактор не относится к модифицируемым факторам риска инсульта?\n-артериальная гипертензия\n-курение\n-гиперхолестеринемия\n+возраст\n-фибрилляция предсердий\n';
+            } else {
+              content = '?Тестовый вопрос 1\n+Правильный ответ\n-Неправильный ответ 1\n-Неправильный ответ 2\n-Неправильный ответ 3\n-Неправильный ответ 4\n' +
+                      '?Тестовый вопрос 2\n-Неправильный ответ 1\n+Правильный ответ\n-Неправильный ответ 2\n-Неправильный ответ 3\n-Неправильный ответ 4\n' +
+                      '?Тестовый вопрос 3\n-Неправильный ответ 1\n-Неправильный ответ 2\n+Правильный ответ\n-Неправильный ответ 3\n-Неправильный ответ 4\n';
+            }
+            
+            currentQuestions = parseTest(content);
+            
+            // Перемешиваем вопросы в случайном порядке
+            currentQuestions = shuffle(currentQuestions);
+            
+            // Update question count info
+            document.getElementById('question-count').textContent = currentQuestions.length;
+            
+            document.getElementById('test-info').classList.remove('d-none');
+            
+            // Display test questions
+            displayTest(currentQuestions);
+          } catch (error) {
+            document.getElementById('test-container').innerHTML = `
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Ошибка загрузки теста: ${error.message}
+              </div>
+            `;
+          }
+        };
+      } catch (error) {
+        const categoryContainer = document.getElementById('category-container');
+        categoryContainer.innerHTML = `
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Ошибка инициализации: ${error.message}
+          </div>
+        `;
+        console.error('Failed to initialize:', error);
+      }
+    }
+    
+    // Load tests for selected category
+    async function loadTestsForCategory(category) {
+      const selector = document.getElementById('test-selector');
+      selector.innerHTML = '<option value="">Загрузка тестов...</option>';
+      
+      try {
+        // В этой версии используем предопределенные тесты
+        const tests = ['Тест 1 (5 вопросов)', 'Тест 2 (10 вопросов)', 'Тест 3 (15 вопросов)'];
+        
+        // Clear loading message
+        selector.innerHTML = '<option value="">Выберите тест</option>';
+        
+        // Add options to select
+        tests.forEach(test => {
+          const option = document.createElement('option');
+          option.value = test;
+          option.textContent = test;
+          selector.appendChild(option);
+        });
+        
+        // Show the test selector
+        document.getElementById('test-selector-container').classList.remove('d-none');
+        
+        // Добавляем обработчик события для кнопки "Пройти все тесты"
+        const runAllButton = document.getElementById('run-all-tests-btn');
+        if (runAllButton) {
+          // Удалить старые обработчики, если они есть
+          const newRunAllButton = runAllButton.cloneNode(true);
+          runAllButton.parentNode.replaceChild(newRunAllButton, runAllButton);
+          
+          // Добавить новый обработчик
+          newRunAllButton.addEventListener('click', function() {
+            console.log('Run all tests button clicked for category:', category);
+            startAllCategoryTests();
+          });
+        }
+      } catch (error) {
+        selector.innerHTML = '<option value="">Ошибка загрузки тестов</option>';
+        console.error(`Failed to load tests for category ${category}:`, error);
+      }
+    }
+    
+    // Parse test content
+    function parseTest(content) {
+      // Предварительная обработка для замены символов ? на <question> и +/- на <variant>
+      let processedContent = '';
+      const contentLines = content.split('\n');
+      
+      for (const line of contentLines) {
+        let processedLine = line;
+        
+        // Замена символа "?" в начале строки на <question>
+        if (line.trim().startsWith('?')) {
+          processedLine = line.replace(/^\s*\?\s*/, '<question>');
+        }
+        // Замена символов "+" и "-" в начале строки на <variant>
+        else if (line.trim().startsWith('+') || line.trim().startsWith('-')) {
+          processedLine = line.replace(/^\s*[+\-]\s*/, '<variant>');
+        }
+        
+        processedContent += processedLine + '\n';
+      }
+      
+      // Оригинальный код парсинга
+      const lines = processedContent.split('\n');
+      const questions = [];
+      let currentQuestion = null;
+      const MAX_VARIANTS = 5; // Ограничиваем количество вариантов ответа до 5
+    
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+        
+        // Проверяем различные варианты форматирования тега question:
+        if (trimmedLine.startsWith('<question>')) {
+          if (currentQuestion) {
+            // Если у вопроса больше 5 вариантов, оставляем только первые 5
+            if (currentQuestion.variants.length > MAX_VARIANTS) {
+              currentQuestion.variants = currentQuestion.variants.slice(0, MAX_VARIANTS);
+            }
+            questions.push(currentQuestion);
+          }
+          
+          // Извлекаем текст вопроса
+          let questionText = trimmedLine.replace('<question>', '');
+          
+          currentQuestion = { 
+            q: questionText.trim(), 
+            variants: [], 
+            answer: null,
+            correctIndex: null
+          };
+        } else if (trimmedLine.startsWith('<variant>')) {
+          // Извлекаем текст варианта ответа
+          let text = trimmedLine.replace('<variant>', '');
+          text = text.trim();
+          
+          if (currentQuestion) {
+            // Если это первый вариант и он начинался с "+", это правильный ответ
+            if (line.trim().startsWith('+')) {
+              currentQuestion.answer = text;
+              currentQuestion.correctIndex = currentQuestion.variants.length;
+            }
+            
+            // Добавляем вариант только если не превышен лимит MAX_VARIANTS
+            if (currentQuestion.variants.length < MAX_VARIANTS) {
+              currentQuestion.variants.push(text);
+            }
+          }
+        }
+      }
+      
+      if (currentQuestion) {
+        // Проверяем последний вопрос на превышение лимита вариантов
+        if (currentQuestion.variants.length > MAX_VARIANTS) {
+          currentQuestion.variants = currentQuestion.variants.slice(0, MAX_VARIANTS);
+        }
+        questions.push(currentQuestion);
+      }
+      
+      return questions;
+    }
+    
+    // Shuffle array (Fisher-Yates algorithm)
+    function shuffle(array) {
+      // Создаем копию массива, чтобы не изменять оригинал
+      const newArray = [...array];
+      
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      
+      return newArray;
+    }
+    
+    // Reset test state
+    function resetTest() {
+      currentQuestionIndex = 0;
+      userAnswers = new Array(currentQuestions.length).fill(null);
+      incorrectQuestions = [];
+      
+      // Reset UI
+      document.getElementById('test-container').innerHTML = '';
+      displayTest(currentQuestions);
+    }
+    
+    // Display test UI
+    function displayTest(questions) {
+      // Prepare container
+      const container = document.getElementById('test-container');
+      container.innerHTML = '';
+      
+      // Create question navigation
+      const nav = document.createElement('div');
+      nav.className = 'navigation-buttons mb-4 d-flex justify-content-between';
+      
+      const prevButton = document.createElement('button');
+      prevButton.className = 'btn btn-outline-primary';
+      prevButton.innerHTML = '<i class="fas fa-arrow-left me-2"></i>Предыдущий';
+      prevButton.onclick = goToPreviousQuestion;
+      
+      const nextButton = document.createElement('button');
+      nextButton.className = 'btn btn-outline-primary';
+      nextButton.innerHTML = 'Следующий<i class="fas fa-arrow-right ms-2"></i>';
+      nextButton.onclick = goToNextQuestion;
+      
+      nav.appendChild(prevButton);
+      nav.appendChild(nextButton);
+      container.appendChild(nav);
+      
+      // Create the question container
+      const questionContainer = document.createElement('div');
+      questionContainer.className = 'questions-container';
+      container.appendChild(questionContainer);
+      
+      // Show first question
+      displayCurrentQuestion();
+      
+      // Add finish button at the bottom
+      if (questions.length > 0) {
+        const finishContainer = document.createElement('div');
+        finishContainer.className = 'd-grid gap-2 col-md-6 mx-auto my-4';
+        
+        const finishBtn = document.createElement('button');
+        finishBtn.className = 'btn btn-success btn-lg';
+        finishBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Завершить тест';
+        finishBtn.onclick = finishTest;
+        
+        finishContainer.appendChild(finishBtn);
+        container.appendChild(finishContainer);
+      }
+      
+      // Add keyboard navigation hint
+      const keyboardHint = document.createElement('div');
+      keyboardHint.className = 'alert alert-secondary mt-4';
+      keyboardHint.innerHTML = `
+        <h5><i class="fas fa-keyboard me-2"></i>Горячие клавиши:</h5>
+        <div class="row">
+          <div class="col-md-4">
+            <ul class="mb-0">
+              <li>Клавиши <strong>1-5</strong>: выбор варианта ответа</li>
+              <li><strong>Enter</strong>: показать правильный ответ</li>
+            </ul>
+          </div>
+          <div class="col-md-4">
+            <ul class="mb-0">
+              <li><strong>→</strong>: следующий вопрос</li>
+              <li><strong>←</strong>: предыдущий вопрос</li>
+            </ul>
+          </div>
+        </div>
+      `;
+      container.appendChild(keyboardHint);
+    }
+    
+    // Display current question
+    function displayCurrentQuestion() {
+      if (currentQuestions.length === 0) return;
+      
+      const container = document.querySelector('.questions-container');
+      if (!container) return;
+      
+      // Clear container
+      container.innerHTML = '';
+      
+      // Get current question
+      const question = currentQuestions[currentQuestionIndex];
+      
+      // Create question element
+      const questionElement = document.createElement('div');
+      questionElement.className = 'question-box current-question';
+      
+      // Question number
+      const questionNumber = document.createElement('div');
+      questionNumber.className = 'question-number';
+      questionNumber.innerHTML = `Вопрос ${currentQuestionIndex + 1} из ${currentQuestions.length}`;
+      questionElement.appendChild(questionNumber);
+      
+      // Question text
+      const questionText = document.createElement('div');
+      questionText.className = 'question-text';
+      questionText.textContent = question.q;
+      questionElement.appendChild(questionText);
+      
+      // Answer options
+      const options = document.createElement('div');
+      options.className = 'options';
+      
+      question.variants.forEach((variant, index) => {
+        const option = document.createElement('div');
+        option.className = 'form-check mb-3';
+        
+        const input = document.createElement('input');
+        input.className = 'form-check-input';
+        input.type = 'radio';
+        input.name = 'question';
+        input.id = `option${index}`;
+        input.value = index;
+        
+        // If answer was already selected
+        if (userAnswers[currentQuestionIndex] !== null) {
+          if (parseInt(userAnswers[currentQuestionIndex]) === index) {
+            input.checked = true;
+          }
+          
+          // Disable inputs if answer was shown
+          input.disabled = true;
+          
+          // Highlight correct and incorrect answers
+          if (question.correctIndex === index) {
+            option.classList.add('correct-answer');
+          } else if (parseInt(userAnswers[currentQuestionIndex]) === index) {
+            option.classList.add('incorrect-answer');
+          }
+        }
+        
+        // Add change handler
+        input.addEventListener('change', function() {
+          // Store user answer
+          userAnswers[currentQuestionIndex] = index;
+        });
+        
+        const label = document.createElement('label');
+        label.className = 'form-check-label';
+        label.htmlFor = `option${index}`;
+        label.textContent = variant;
+        
+        option.appendChild(input);
+        option.appendChild(label);
+        options.appendChild(option);
+      });
+      
+      questionElement.appendChild(options);
+      container.appendChild(questionElement);
+    }
+    
+    // Navigate to next question
+    function goToNextQuestion() {
+      if (currentQuestionIndex < currentQuestions.length - 1) {
+        currentQuestionIndex++;
+        displayCurrentQuestion();
+      } else {
+        // If we're at the last question, offer to finish the test
+        if (confirm('Вы на последнем вопросе. Завершить тест?')) {
+          finishTest();
+        }
+      }
+    }
+    
+    // Navigate to previous question
+    function goToPreviousQuestion() {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayCurrentQuestion();
+      }
+    }
+    
+    // Highlight correct answer
+    function highlightCorrectAnswer() {
+      const question = currentQuestions[currentQuestionIndex];
+      const options = document.querySelectorAll('.current-question .form-check');
+      const correctIndex = question.correctIndex;
+      
+      // Disable all inputs
+      document.querySelectorAll('.current-question .form-check-input').forEach(input => {
+        input.disabled = true;
+      });
+      
+      // Highlight correct answer
+      if (correctIndex !== null && options[correctIndex]) {
+        options[correctIndex].classList.add('correct-answer');
+      }
+      
+      // Highlight user's incorrect answer if any
+      const userAnswer = userAnswers[currentQuestionIndex];
+      if (userAnswer !== null && parseInt(userAnswer) !== correctIndex && options[userAnswer]) {
+        options[userAnswer].classList.add('incorrect-answer');
+      }
+    }
+    
+    // Display incorrect answers
+    function displayIncorrectAnswers() {
+      if (incorrectQuestions.length === 0) return;
+      
+      const container = document.getElementById('incorrect-answers-container');
+      
+      // Очистить предыдущее содержимое
+      container.innerHTML = '';
+      
+      // Создать заголовок
+      const header = document.createElement('h3');
+      header.className = 'mt-4 mb-3';
+      header.textContent = 'Неправильные ответы:';
+      container.appendChild(header);
+      
+      // Создать список неправильных ответов
+      const list = document.createElement('ul');
+      list.className = 'list-group';
+      
+      incorrectQuestions.forEach((item, index) => {
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item';
+        listItem.innerHTML = `
+          <div class="fw-bold mb-1">${index + 1}. ${item.question}</div>
+          <div class="text-danger">Ваш ответ: ${item.userAnswer}</div>
+          <div class="text-success">Правильный ответ: ${item.correctAnswer}</div>
+        `;
+        list.appendChild(listItem);
+      });
+      
+      container.appendChild(list);
+      container.classList.remove('d-none');
+    }
+    
+    // Функция для подготовки статистики по исходному тесту
+    function prepareTestSourceStats(allQuestions, userAnswers) {
+      const testStats = {};
+      
+      // Подсчитать статистику по каждому исходному тесту
+      for (let i = 0; i < allQuestions.length; i++) {
+        const question = allQuestions[i];
+        const sourceTest = question.sourceTest || 'Тестовый вопрос';
+        
+        if (!testStats[sourceTest]) {
+          testStats[sourceTest] = {
+            total: 0,
+            correct: 0
+          };
+        }
+        
+        testStats[sourceTest].total++;
+        
+        // Если на вопрос был дан правильный ответ
+        if (parseInt(userAnswers[i]) === question.correctIndex) {
+          testStats[sourceTest].correct++;
+        }
+      }
+      
+      // Преобразовать в массив для вывода
+      const testResults = Object.entries(testStats).map(([testName, stats]) => {
+        return {
+          testName,
+          total: stats.total,
+          correct: stats.correct
+        };
+      });
+      
+      return testResults;
+    }
+    
+    // Функция для запуска режима прохождения всех тестов в категории
+    async function startAllCategoryTests() {
+      try {
+        // Показать индикатор загрузки
+        document.getElementById('test-container').innerHTML = `
+          <div class="text-center py-5">
+            <span class="loader"></span>
+            <p class="mt-3">Загрузка всех тестов категории...</p>
+          </div>
+        `;
+        
+        // В этой версии используем предопределенные тесты по неврологии
+        const allQuestions = [];
+        
+        // Тесты по неврологии
+        const testContents = [
+          // Тест 1 - Болезнь Паркинсона
+          '?При какой болезни дегенерация нервных клеток чаще локализуется в черной субстанции?\n+болезнь Паркинсона\n-энцефалит\n-склероз\n-менингит\n-абсцесс\n' +
+          '?Дофаминергическое лечение болезни Паркинсона включает:\n-амантадин\n+L-дофа+бенсеразид\n-агонисты дофаминовых рецепторов\n-бромокриптин\n-все ответы верны\n' +
+          '?Выраженность клинических проявлений при болезни Паркинсона зависит от:\n-тяжести заболевания\n-длительности заболевания\n-возраста больного\n-сопутствующих заболеваний\n+степени дегенерации дофаминергических нейронов\n' +
+          '?Для синдрома паркинсонизма характерно все, кроме:\n-гипомимии\n-брадикинезии\n-ригидности мышц\n+атаксии\n-тремора покоя\n' +
+          '?Наиболее частой причиной развития паркинсонизма является:\n-сосудистые заболевания головного мозга\n-эпилепсия\n+болезнь Паркинсона\n-прием нейролептиков\n-нейроинфекции\n',
+          
+          // Тест 2 - Нейродегенеративные заболевания
+          '?Что такое аутосомно-доминантное наследование?\n+атаксия Фридрейха\n-мышечная дистрофия Дюшенна\n-атаксия-телеангиэктазия\n-наследственная моторно-сенсорная невропатия Шарко-Мари-Тута 1-го типа\n-наследственная моторно-сенсорная невропатия Шарко-Мари-Тута 2-го типа\n' +
+          '?Мышечная дистрофия Дюшенна и Беккера обусловлена дефектом белка:\n-титина\n-десмина\n+дистрофина\n-дисферлина\n-ламинина\n' +
+          '?Какие изменения на МРТ головного мозга наблюдаются при болезни Альцгеймера?\n-инфаркты\n-геморрагии\n+атрофия\n-зоны глиоза\n-лейкоареоз\n' +
+          '?Патогенез старческой деменции в основном связан с\n-накоплением амилоида\n-дефицитом нейромедиаторов\n-нарушением кровообращения\n-старческими бляшками\n+всё перечисленное\n' +
+          '?При болезни Паркинсона наиболее характерным признаком является:\n-асимметричный тремор в покое\n-гипомимия\n-нарушения ходьбы\n-брадикинезия\n+все вышеперечисленное\n',
+          
+          // Тест 3 - Инсульт и головные боли
+          '?Какие изменения на МРТ головного мозга характерны для сосудистой деменции?\n-гидроцефалия\n-атрофия\n+лакунарные инфаркты\n-вентрикуломегалия\n-опухоли\n' +
+          '?Что не относится к первичным головным болям?\n-мигрень\n-головная боль напряжения\n+головная боль при менингите\n-кластерная головная боль\n-тригеминальные вегетативные цефалгии\n' +
+          '?Какой из препаратов используется для купирования приступа мигрени?\n-парацетамол\n-аспирин\n+суматриптан\n-диклофенак\n-нимесулид\n' +
+          '?Основным патогенетическим механизмом формирования острого нарушения мозгового кровообращения является:\n-воспаление\n-демиелинизация\n+ишемия\n-повышение внутричерепного давления\n-нейродегенерация\n' +
+          '?Какой метод нейровизуализации является методом выбора при подозрении на инсульт в первые часы?\n-МРТ в стандартных режимах\n-МР-ангиография\n+КТ головного мозга\n-церебральная ангиография\n-ПЭТ\n'
+        ];
+        
+        // Обработать каждый тест и добавить его вопросы в общий массив
+        testContents.forEach((testContent, testIndex) => {
+          const testName = `Тест ${testIndex + 1} (${testIndex * 5 + 5} вопросов)`;
+          
+          // Парсим тест
+          const parsedQuestions = parseTest(testContent);
+          
+          // Добавляем информацию о том, из какого он теста
+          parsedQuestions.forEach(q => {
+            q.sourceTest = testName;
+            allQuestions.push(q);
+          });
+        });
+        
+        if (allQuestions.length === 0) {
+          document.getElementById('test-container').innerHTML = `
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              В данной категории нет тестов.
+            </div>
+          `;
+          return;
+        }
+        
+        // Перемешиваем вопросы в случайном порядке
+        const shuffledQuestions = shuffle(allQuestions);
+        
+        // Обновить текущие вопросы и начать тест
+        currentQuestions = shuffledQuestions;
+        currentTestName = `Все вопросы из категории (${shuffledQuestions.length} вопросов, случайный порядок)`;
+        
+        // Обновить информацию о тесте
+        document.getElementById('test-info').innerHTML = `
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Загружено ${shuffledQuestions.length} вопросов из тестов в случайном порядке.
+          </div>
+        `;
+        
+        // Начать тест со всеми вопросами
+        currentQuestionIndex = 0;
+        userAnswers = new Array(currentQuestions.length).fill(null);
+        incorrectQuestions = [];
+        
+        // Отобразить вопросы
+        displayCurrentQuestion();
+        
+      } catch (error) {
+        document.getElementById('test-container').innerHTML = `
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Ошибка при загрузке тестов: ${error.message}
+          </div>
+        `;
+        console.error('Error starting all category tests:', error);
+      }
+    }
+    
+    // Функция завершения теста с поддержкой статистики по исходным тестам
+    function finishTest() {
+      // Вычислить результаты
+      let score = 0;
+      let totalAnswered = 0;
+      incorrectQuestions = [];
+      
+      // Проверить каждый вопрос
+      currentQuestions.forEach((q, i) => {
+        const userAnswer = userAnswers[i];
+        
+        if (userAnswer !== null) {
+          totalAnswered++;
+          // Получаем правильный индекс ответа для сравнения
+          const correctIndex = q.correctIndex;
+          
+          const isCorrect = parseInt(userAnswer) === correctIndex;
+          
+          if (isCorrect) {
+            score++;
+          } else {
+            // Добавить в список неправильных ответов
+            incorrectQuestions.push({
+              question: q.q,
+              userAnswer: q.variants[userAnswer],
+              correctAnswer: q.variants[correctIndex]
+            });
+          }
+        }
+      });
+      
+      // Показать результаты
+      const resultsContainer = document.getElementById('results-container');
+      const scoreFraction = document.getElementById('score-fraction');
+      const scorePercentage = document.getElementById('score-percentage');
+      const scoreProgress = document.getElementById('score-progress');
+      
+      // Рассчитать процент
+      const percentage = totalAnswered > 0 ? Math.round((score / currentQuestions.length) * 100) : 0;
+      
+      // Обновить отображение результатов
+      scoreFraction.textContent = `${score} / ${currentQuestions.length}`;
+      scorePercentage.textContent = `${percentage}%`;
+      scoreProgress.style.width = `${percentage}%`;
+      
+      // Установить цвет прогресс-бара в зависимости от результата
+      if (percentage >= 80) {
+        scoreProgress.className = 'progress-bar bg-success';
+      } else if (percentage >= 60) {
+        scoreProgress.className = 'progress-bar bg-warning';
+      } else {
+        scoreProgress.className = 'progress-bar bg-danger';
+      }
+      
+      // Показать детальную статистику по исходным тестам, если это загрузка всех тестов
+      const isAllTestsFromCategory = currentQuestions.some(q => q.sourceTest);
+      
+      if (isAllTestsFromCategory) {
+        // Получить статистику по исходным тестам
+        const testStats = prepareTestSourceStats(currentQuestions, userAnswers);
+        
+        // Отобразить статистику в отдельном разделе
+        const container = document.getElementById('incorrect-answers-container');
+        container.innerHTML = '';
+        
+        // Заголовок для статистики
+        const statsHeader = document.createElement('h3');
+        statsHeader.className = 'mt-4 mb-3';
+        statsHeader.textContent = 'Статистика по тестам:';
+        container.appendChild(statsHeader);
+        
+        // Таблица результатов
+        const statsTable = document.createElement('table');
+        statsTable.className = 'table table-striped';
+        statsTable.innerHTML = `
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Тест</th>
+              <th>Правильно/Всего</th>
+              <th>Процент</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+        
+        // Заполнить таблицу
+        const tbody = statsTable.querySelector('tbody');
+        testStats.forEach((test, index) => {
+          const percent = Math.round((test.correct / test.total) * 100) || 0;
+          
+          const row = document.createElement('tr');
+          
+          // Класс строки в зависимости от результата
+          if (percent >= 80) {
+            row.className = 'table-success';
+          } else if (percent >= 60) {
+            row.className = 'table-warning';
+          } else {
+            row.className = 'table-danger';
+          }
+          
+          row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${test.testName}</td>
+            <td>${test.correct}/${test.total}</td>
+            <td>${percent}%</td>
+          `;
+          
+          tbody.appendChild(row);
+        });
+        
+        container.appendChild(statsTable);
+      }
+      
+      // Отобразить неправильные ответы, если есть
+      displayIncorrectAnswers();
+      
+      // Показать результаты
+      resultsContainer.classList.remove('d-none');
+      resultsContainer.scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
