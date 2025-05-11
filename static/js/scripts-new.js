@@ -725,16 +725,36 @@ function highlightCorrectAnswer() {
   console.log(`Выбран ответ: "${selectedAnswer}"`);
   console.log(`Правильный ответ: "${correctAnswer}"`);
   
-  // Проверяем более гибким способом (точное совпадение или включение)
-  let isCorrect = normalizedUserAnswer === normalizedCorrectAnswer || 
-                 normalizedUserAnswer.includes(normalizedCorrectAnswer) ||
-                 normalizedCorrectAnswer.includes(normalizedUserAnswer);
-  
-  // Дополнительная проверка по первым словам для сложных ответов
-  if (!isCorrect && normalizedUserAnswer && normalizedCorrectAnswer &&
-      normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
-      normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
+  // Проверка совпадения ответов различными способами
+  let isCorrect = false;
+      
+  // Проверка 1: Точное совпадение
+  if (selectedAnswer === correctAnswer) {
+    console.log("✓ Точное совпадение!");
     isCorrect = true;
+  } 
+  // Проверка 2: Нормализованное сравнение
+  else if (normalizedUserAnswer === normalizedCorrectAnswer) {
+    console.log("✓ Совпадение после нормализации!");
+    isCorrect = true;
+  }
+  // Проверка 3: Поиск подстроки
+  else if (normalizedUserAnswer.includes(normalizedCorrectAnswer)) {
+    console.log("✓ Правильный ответ содержится в ответе пользователя!");
+    isCorrect = true;
+  }
+  else if (normalizedCorrectAnswer.includes(normalizedUserAnswer)) {
+    console.log("✓ Ответ пользователя содержится в правильном ответе!");
+    isCorrect = true;
+  }
+  // Проверка 4: Совпадение первых слов для сложных ответов
+  else if (normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
+          normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
+    console.log("✓ Совпадение по первым словам!");
+    isCorrect = true;
+  }
+  else {
+    console.log("✗ Ответы не совпадают ни по одному из критериев");
   }
   
   console.log(`Совпадение ответов: ${isCorrect ? 'Да' : 'Нет'}`);
@@ -770,146 +790,8 @@ function highlightCorrectAnswer() {
   }
 }
 
-// Finish the test and show results
-function finishTest() {
-  // Calculate results
-  let score = 0;
-  let totalAnswered = 0;
-  
-  // Reset incorrect questions list
-  incorrectQuestions = [];
-  
-  console.log("================================");
-  console.log("НАЧИНАЕМ ПРОВЕРКУ РЕЗУЛЬТАТОВ ТЕСТА");
-  console.log(`Всего вопросов: ${currentQuestions.length}, ответов: ${userAnswers.filter(a => a !== null).length}`);
-  console.log("================================");
-  
-  // Отображаем все ответы пользователя для отладки
-  userAnswers.forEach((answer, index) => {
-    if (answer !== null) {
-      console.log(`Ответ #${index+1}: "${answer}"`);
-    }
-  });
-  
-  // Check each question
-  currentQuestions.forEach((q, i) => {
-    const userAnswer = userAnswers[i];
-    
-    if (userAnswer !== null) {
-      totalAnswered++;
-      
-      // Проверка правильного ответа
-      const correctAnswer = q.answer;
-      
-      // Нормализуем строки для сравнения
-      const normalizedUserAnswer = userAnswer.trim().toLowerCase();
-      const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
-      
-      console.log(`\nПРОВЕРКА ВОПРОСА #${i+1}: "${q.q.substring(0, 50)}..."`);
-      console.log(`Ответ пользователя: "${userAnswer}"`);
-      console.log(`Правильный ответ: "${correctAnswer}"`);
-      
-      // Проверка совпадения ответов разными способами
-      let isCorrect = false;
-      
-      // Проверка 1: Простое сравнение - абсолютно одинаковые строки
-      if (userAnswer === correctAnswer) {
-        console.log("✓ Точное совпадение!");
-        isCorrect = true;
-      } else {
-        // Проверка 2: Нормализованное сравнение
-        if (normalizedUserAnswer === normalizedCorrectAnswer) {
-          console.log("✓ Совпадение после нормализации!");
-          isCorrect = true;
-        }
-        // Проверка 3: Включение одной строки в другую
-        else if (normalizedUserAnswer.includes(normalizedCorrectAnswer)) {
-          console.log("✓ Правильный ответ содержится в ответе пользователя!");
-          isCorrect = true;
-        }
-        else if (normalizedCorrectAnswer.includes(normalizedUserAnswer)) {
-          console.log("✓ Ответ пользователя содержится в правильном ответе!");
-          isCorrect = true;
-        }
-        // Проверка 4: Совпадение первых слов для сложных ответов
-        else if (normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
-                normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
-          console.log("✓ Совпадение по первым словам!");
-          isCorrect = true;
-        }
-        else {
-          console.log("✗ Ответы не совпадают ни по одному из критериев");
-        }
-      }
-      
-      // Финальный результат для этого вопроса
-      console.log(`Итоговая оценка: ${isCorrect ? 'ВЕРНО' : 'НЕВЕРНО'}`);
-      
-      if (isCorrect) {
-        score++;
-      } else {
-        // Добавляем в список неправильных ответов
-        incorrectQuestions.push({
-          question: q.q,
-          userAnswer: userAnswer,
-          correctAnswer: correctAnswer,
-          allVariants: q.variants || [],
-          correctAnswerIndex: (q.variants || []).indexOf(correctAnswer)
-        });
-        
-        console.log(`Добавлен в список неправильных ответов. Всего неправильных: ${incorrectQuestions.length}`);
-      }
-    }
-  });
-  
-  // Отображаем результаты теста
-  const resultsContainer = document.getElementById('results-container');
-  const scoreFraction = document.getElementById('score-fraction');
-  const scorePercentage = document.getElementById('score-percentage');
-  const scoreProgress = document.getElementById('score-progress');
-  
-  // Посчитаем общее количество вопросов в тесте
-  const totalQuestions = currentQuestions.length;
-  
-  // Calculate percentage out of total questions
-  const percentage = totalAnswered > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-  
-  // Update result display with total questions
-  scoreFraction.textContent = `${score} / ${totalQuestions}`;
-  scorePercentage.textContent = `${percentage}%`;
-  scoreProgress.style.width = `${percentage}%`;
-  
-  // Set progress bar color based on score
-  if (percentage >= 80) {
-    scoreProgress.className = 'progress-bar bg-success';
-  } else if (percentage >= 60) {
-    scoreProgress.className = 'progress-bar bg-warning';
-  } else {
-    scoreProgress.className = 'progress-bar bg-danger';
-  }
-  
-  // Добавляем дополнительную информацию
-  const resultDetails = document.getElementById('result-details');
-  if (resultDetails) {
-    // Если пользователь ответил не на все вопросы
-    if (totalAnswered < totalQuestions) {
-      resultDetails.textContent = `Вы ответили на ${totalAnswered} из ${totalQuestions} вопросов. Правильных ответов: ${score}.`;
-    } else {
-      resultDetails.textContent = `Правильных ответов: ${score} из ${totalQuestions}.`;
-    }
-  }
-  
-  // Display incorrect answers if any
-  displayIncorrectAnswers();
-  
-  // Show results container
-  resultsContainer.classList.remove('d-none');
-  resultsContainer.scrollIntoView({ behavior: 'smooth' });
-  
-  // Сообщаем об успешном завершении теста
-  console.log(`Итоговая статистика: ${score} правильных из ${totalAnswered} отвеченных (${percentage}%)`);
-  return score;
-}
+// Изначальная функция finishTest была удалена
+// Используется оптимизированная версия finishTest ниже
 
 // Display incorrect answers
 function displayIncorrectAnswers() {
@@ -1156,11 +1038,17 @@ function prepareTestSourceStats(allQuestions, userAnswers) {
 // Функционал кнопки "Пройти все тесты категории" теперь интегрирован в финальную стадию теста через функцию prepareTestSourceStats
 
 // Функция завершения теста с поддержкой статистики по исходным тестам
+// Единая функция finishTest - исправленная
 function finishTest() {
   // Вычислить результаты
   let score = 0;
   let totalAnswered = 0;
   incorrectQuestions = [];
+  
+  console.log("================================");
+  console.log("НАЧИНАЕМ ПРОВЕРКУ РЕЗУЛЬТАТОВ ТЕСТА");
+  console.log(`Всего вопросов: ${currentQuestions.length}, ответов: ${userAnswers.filter(a => a !== null).length}`);
+  console.log("================================");
   
   // Проверить каждый вопрос
   currentQuestions.forEach((q, i) => {
@@ -1168,17 +1056,50 @@ function finishTest() {
     
     if (userAnswer) {
       totalAnswered++;
-      // Получаем правильный индекс ответа для сравнения
-      // Для совместимости с разными форматами тестов
+      // Получаем правильный ответ для сравнения
       const correctAnswer = q.answer;
-      let correctIndex = q.correctIndex;
       
-      if (correctIndex === undefined) {
-        // Если correctIndex не задан, используем позицию правильного ответа в массиве
-        correctIndex = q.variants.indexOf(correctAnswer);
+      console.log(`\nПРОВЕРКА ВОПРОСА #${i+1}: "${q.q.substring(0, 50)}..."`);
+      console.log(`Ответ пользователя: "${userAnswer}"`);
+      console.log(`Правильный ответ: "${correctAnswer}"`);
+      
+      // Нормализуем строки для сравнения
+      const normalizedUserAnswer = userAnswer.trim().toLowerCase();
+      const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+      
+      // Проверка совпадения ответов различными способами
+      let isCorrect = false;
+      
+      // Проверка 1: Точное совпадение
+      if (userAnswer === correctAnswer) {
+        console.log("✓ Точное совпадение!");
+        isCorrect = true;
+      } 
+      // Проверка 2: Нормализованное сравнение
+      else if (normalizedUserAnswer === normalizedCorrectAnswer) {
+        console.log("✓ Совпадение после нормализации!");
+        isCorrect = true;
+      }
+      // Проверка 3: Поиск подстроки
+      else if (normalizedUserAnswer.includes(normalizedCorrectAnswer)) {
+        console.log("✓ Правильный ответ содержится в ответе пользователя!");
+        isCorrect = true;
+      }
+      else if (normalizedCorrectAnswer.includes(normalizedUserAnswer)) {
+        console.log("✓ Ответ пользователя содержится в правильном ответе!");
+        isCorrect = true;
+      }
+      // Проверка 4: Совпадение первых слов для сложных ответов
+      else if (normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
+               normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
+        console.log("✓ Совпадение по первым словам!");
+        isCorrect = true;
+      }
+      else {
+        console.log("✗ Ответы не совпадают ни по одному из критериев");
       }
       
-      const isCorrect = parseInt(userAnswer) === correctIndex;
+      console.log(`Итоговая оценка: ${isCorrect ? 'ВЕРНО' : 'НЕВЕРНО'}`);
       
       if (isCorrect) {
         score++;
@@ -1187,7 +1108,9 @@ function finishTest() {
         incorrectQuestions.push({
           question: q.q,
           userAnswer: userAnswer,
-          correctAnswer: correctAnswer
+          correctAnswer: correctAnswer,
+          allVariants: q.variants || [],
+          correctAnswerIndex: (q.variants || []).indexOf(correctAnswer)
         });
       }
     }
