@@ -308,10 +308,22 @@ async function fetchTestFile(category, filename) {
 
 // Parse test content
 function parseTest(content) {
+  console.log("Начинаем парсинг теста");
+  
   // Предварительная обработка для замены символов ? на <question> и +/- на <variant>
-  // Данная замена происходит построчно для правильной обработки
   let processedContent = '';
   const contentLines = content.split('\n');
+  
+  // Проверяем, использует ли тест символы +/- для маркировки вариантов
+  let hasPlusMinusFormat = false;
+  for (const line of contentLines) {
+    if (line.trim().startsWith('+') || line.trim().startsWith('-')) {
+      hasPlusMinusFormat = true;
+      break;
+    }
+  }
+  
+  console.log("Формат теста с +/- символами: " + (hasPlusMinusFormat ? "Да" : "Нет"));
   
   for (const line of contentLines) {
     let processedLine = line;
@@ -320,28 +332,32 @@ function parseTest(content) {
     if (line.trim().startsWith('?')) {
       processedLine = line.replace(/^\s*\?\s*/, '<question>');
     }
-    // Замена символов "+" и "-" в начале строки на <variant>
-    else if (line.trim().startsWith('+') || line.trim().startsWith('-')) {
-      processedLine = line.replace(/^\s*[+\-]\s*/, '<variant>');
+    // Замена символов "+" (правильный вариант) в начале строки на <variant>+++
+    else if (line.trim().startsWith('+')) {
+      processedLine = line.replace(/^\s*\+\s*/, '<variant>+++');
+    }
+    // Замена символов "-" (неправильный вариант) в начале строки на <variant>
+    else if (line.trim().startsWith('-')) {
+      processedLine = line.replace(/^\s*\-\s*/, '<variant>');
     }
     
     processedContent += processedLine + '\n';
   }
   
-  // Оригинальный код парсинга
+  // Разбираем обработанные данные
   const lines = processedContent.split('\n');
   const questions = [];
   let currentQuestion = null;
+  let currentVariants = []; // Для временного хранения вариантов текущего вопроса
+  let correctAnswerIndex = 0; // Индекс правильного ответа
   const MAX_VARIANTS = 5; // Ограничиваем количество вариантов ответа до 5
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmedLine = line.trim();
     if (!trimmedLine) continue;
     
     // Проверяем различные варианты форматирования тега question:
-    // 1. Стандартный тег: <question>текст
-    // 2. Тег с пробелом: <question >текст
-    // 3. Нумерация перед тегом: 1. <question>текст или 1.<question>текст
     if (
       trimmedLine.startsWith('<question>') || 
       trimmedLine.startsWith('<question ') || 
@@ -349,14 +365,29 @@ function parseTest(content) {
       trimmedLine.match(/^\d+\s*\.\s*<question>/) ||
       trimmedLine.match(/^\d+\s*\.\s*<question\s*>/)
     ) {
+      // Если у нас есть предыдущий вопрос, добавляем его в массив
       if (currentQuestion) {
         // Если у вопроса больше 5 вариантов, оставляем только первые 5
-        if (currentQuestion.variants.length > MAX_VARIANTS) {
-          console.warn(`Вопрос "${currentQuestion.q}" имеет ${currentQuestion.variants.length} вариантов. Оставляем только первые ${MAX_VARIANTS}.`);
-          currentQuestion.variants = currentQuestion.variants.slice(0, MAX_VARIANTS);
+        if (currentVariants.length > MAX_VARIANTS) {
+          console.warn(`Вопрос "${currentQuestion}" имеет ${currentVariants.length} вариантов. Оставляем только первые ${MAX_VARIANTS}.`);
+          currentVariants = currentVariants.slice(0, MAX_VARIANTS);
         }
-        questions.push(currentQuestion);
+        
+        // Проверяем, не превышает ли индекс правильного ответа количество вариантов
+        if (correctAnswerIndex >= currentVariants.length) {
+          correctAnswerIndex = 0;
+          console.warn(`Индекс правильного ответа превышает количество вариантов, устанавливаем первый вариант как правильный.`);
+        }
+        
+        questions.push({
+          q: currentQuestion,
+          variants: currentVariants,
+          answer: currentVariants[correctAnswerIndex]
+        });
+        
+        console.log(`Добавлен вопрос "${currentQuestion}" с ${currentVariants.length} вариантами. Правильный ответ: "${currentVariants[correctAnswerIndex]}"`);
       }
+      
       // Извлекаем текст вопроса, обрабатывая разные варианты форматирования тега
       let questionText = trimmedLine;
       
@@ -372,16 +403,15 @@ function parseTest(content) {
         questionText = questionText.replace(/^<question\s*>/, '');
       }
       
-      currentQuestion = { 
-        q: questionText.trim(), 
-        variants: [], 
-        answer: null 
-      };
+      // Начинаем новый вопрос
+      currentQuestion = questionText.trim();
+      currentVariants = [];
+      correctAnswerIndex = 0; // По умолчанию первый вариант правильный
+      
+      console.log(`Обрабатываем новый вопрос: "${currentQuestion}"`);
+    }
     // Проверяем различные варианты форматирования тега variant:
-    // 1. Стандартный тег: <variant>текст
-    // 2. Тег с пробелом: <variant >текст
-    // 3. Нумерация перед тегом: 1. <variant>текст или 1.<variant>текст
-    } else if (
+    else if (
       trimmedLine.startsWith('<variant>') || 
       trimmedLine.startsWith('<variant ') || 
       trimmedLine.match(/^<variant\s*>/) ||
@@ -390,6 +420,9 @@ function parseTest(content) {
     ) {
       // Извлекаем текст варианта ответа, обрабатывая разные форматы тега
       let text = trimmedLine;
+      
+      // Проверяем, помечен ли этот вариант как правильный
+      const isCorrectVariant = text.includes('+++');
       
       // Удаляем номер варианта, если он есть (например, "1." или "1.1.")
       if (text.match(/^\d+(\.\d+)*\s*\./)) {
@@ -406,25 +439,66 @@ function parseTest(content) {
       } else if (text.match(/^\d+\s*\.\s*<variant\s*>/)) {
         text = text.replace(/^\d+\s*\.\s*<variant\s*>/, '');
       }
-      text = text.trim();
-      if (currentQuestion) {
-        if (currentQuestion.answer === null) currentQuestion.answer = text;
-        // Добавляем вариант только если не превышен лимит MAX_VARIANTS
-        if (currentQuestion.variants.length < MAX_VARIANTS) {
-          currentQuestion.variants.push(text);
+      // Удаляем все маркеры правильного ответа из текста
+      const cleanText = text.replace('+++', '').replace('$correct', '').trim();
+      
+      // Если это текущий вопрос и есть текст варианта
+      if (currentQuestion && cleanText) {
+        // Если это вариант с маркером правильного ответа +++
+        if (isCorrectVariant && currentVariants.length < MAX_VARIANTS) {
+          // Запоминаем индекс правильного варианта
+          correctAnswerIndex = currentVariants.length;
+          console.log(`Найден правильный ответ для вопроса "${currentQuestion}": "${cleanText}" (индекс ${correctAnswerIndex})`);
+        }
+        
+        // Добавляем вариант в список (если не превышен лимит)
+        if (currentVariants.length < MAX_VARIANTS) {
+          currentVariants.push(cleanText);
         }
       }
     }
   }
   
+  // Не забудем обработать последний вопрос
   if (currentQuestion) {
-    // Проверяем последний вопрос на превышение лимита вариантов
-    if (currentQuestion.variants.length > MAX_VARIANTS) {
-      console.warn(`Вопрос "${currentQuestion.q}" имеет ${currentQuestion.variants.length} вариантов. Оставляем только первые ${MAX_VARIANTS}.`);
-      currentQuestion.variants = currentQuestion.variants.slice(0, MAX_VARIANTS);
+    // Если у вопроса больше 5 вариантов, оставляем только первые 5
+    if (currentVariants.length > MAX_VARIANTS) {
+      console.warn(`Вопрос "${currentQuestion}" имеет ${currentVariants.length} вариантов. Оставляем только первые ${MAX_VARIANTS}.`);
+      currentVariants = currentVariants.slice(0, MAX_VARIANTS);
     }
-    questions.push(currentQuestion);
+    
+    // Проверяем, не превышает ли индекс правильного ответа количество вариантов
+    if (correctAnswerIndex >= currentVariants.length) {
+      correctAnswerIndex = 0;
+      console.warn(`Индекс правильного ответа превышает количество вариантов, устанавливаем первый вариант как правильный.`);
+    }
+    
+    questions.push({
+      q: currentQuestion,
+      variants: currentVariants,
+      answer: currentVariants[correctAnswerIndex]
+    });
+    
+    console.log(`Добавлен последний вопрос "${currentQuestion}" с ${currentVariants.length} вариантами. Правильный ответ: "${currentVariants[correctAnswerIndex]}"`);
   }
+  
+  console.log(`Всего распознано ${questions.length} вопросов с правильными ответами`);
+  
+  // Если в тесте нет вопросов, возвращаем пустой массив
+  if (questions.length === 0) {
+    console.warn('В тесте не найдено ни одного вопроса!');
+    return questions;
+  }
+  
+  // Проверяем, что у всех вопросов есть хотя бы один вариант ответа
+  for (let i = 0; i < questions.length; i++) {
+    if (questions[i].variants.length === 0) {
+      console.warn(`Вопрос "${questions[i].q}" не имеет вариантов ответа!`);
+    }
+    console.log(`Вопрос ${i+1}: "${questions[i].q}" - правильный ответ: "${questions[i].answer}"`);
+  }
+  
+  // Возвращаем вопросы (их можно перемешать, но не обязательно)
   return questions;
 }
 
@@ -528,12 +602,20 @@ function displayCurrentQuestion() {
     label.htmlFor = optionId;
     label.innerHTML = `<strong>${varIndex + 1}.</strong> ${variant}`;
     
-    // Add click event listener to only show correct answer (without automatic navigation)
+    // Add click event listener to show correct answer AND automatically navigate to next question
     input.addEventListener('change', function() {
       userAnswers[currentQuestionIndex] = this.value;
       
       // Highlight the correct answer immediately
       highlightCorrectAnswer();
+      
+      // Automatically go to next question after a delay
+      setTimeout(() => {
+        // Только если это не последний вопрос
+        if (currentQuestionIndex < currentQuestions.length - 1) {
+          goToNextQuestion();
+        }
+      }, 6000); // Задержка в 6 секунд перед переходом
     });
     
     formCheck.appendChild(input);
@@ -635,7 +717,27 @@ function highlightCorrectAnswer() {
   
   // Find the selected answer
   const selectedAnswer = userAnswers[currentQuestionIndex];
-  const isCorrect = selectedAnswer === correctAnswer;
+  
+  // Нормализуем строки для более точного сравнения
+  const normalizedUserAnswer = selectedAnswer ? selectedAnswer.trim().toLowerCase() : '';
+  const normalizedCorrectAnswer = correctAnswer ? correctAnswer.trim().toLowerCase() : '';
+  
+  console.log(`Выбран ответ: "${selectedAnswer}"`);
+  console.log(`Правильный ответ: "${correctAnswer}"`);
+  
+  // Проверяем более гибким способом (точное совпадение или включение)
+  let isCorrect = normalizedUserAnswer === normalizedCorrectAnswer || 
+                 normalizedUserAnswer.includes(normalizedCorrectAnswer) ||
+                 normalizedCorrectAnswer.includes(normalizedUserAnswer);
+  
+  // Дополнительная проверка по первым словам для сложных ответов
+  if (!isCorrect && normalizedUserAnswer && normalizedCorrectAnswer &&
+      normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
+      normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
+    isCorrect = true;
+  }
+  
+  console.log(`Совпадение ответов: ${isCorrect ? 'Да' : 'Нет'}`);
   
   // Highlight correct and incorrect options
   options.forEach(option => {
@@ -643,13 +745,13 @@ function highlightCorrectAnswer() {
     const label = option.querySelector('label');
     
     if (input.value === correctAnswer) {
-      // Correct answer
+      // Правильный ответ
       option.classList.add('option-correct');
       if (!label.innerHTML.includes('fa-check')) {
         label.innerHTML += ' <i class="fas fa-check text-success"></i>';
       }
     } else if (input.checked) {
-      // Incorrect selected answer
+      // Неправильный выбранный ответ
       if (!isCorrect) {
         option.classList.add('option-incorrect');
         if (!label.innerHTML.includes('fa-times')) {
@@ -673,40 +775,107 @@ function finishTest() {
   // Calculate results
   let score = 0;
   let totalAnswered = 0;
+  
+  // Reset incorrect questions list
   incorrectQuestions = [];
+  
+  console.log("================================");
+  console.log("НАЧИНАЕМ ПРОВЕРКУ РЕЗУЛЬТАТОВ ТЕСТА");
+  console.log(`Всего вопросов: ${currentQuestions.length}, ответов: ${userAnswers.filter(a => a !== null).length}`);
+  console.log("================================");
+  
+  // Отображаем все ответы пользователя для отладки
+  userAnswers.forEach((answer, index) => {
+    if (answer !== null) {
+      console.log(`Ответ #${index+1}: "${answer}"`);
+    }
+  });
   
   // Check each question
   currentQuestions.forEach((q, i) => {
     const userAnswer = userAnswers[i];
     
-    if (userAnswer) {
+    if (userAnswer !== null) {
       totalAnswered++;
-      const isCorrect = userAnswer === q.answer;
+      
+      // Проверка правильного ответа
+      const correctAnswer = q.answer;
+      
+      // Нормализуем строки для сравнения
+      const normalizedUserAnswer = userAnswer.trim().toLowerCase();
+      const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+      
+      console.log(`\nПРОВЕРКА ВОПРОСА #${i+1}: "${q.q.substring(0, 50)}..."`);
+      console.log(`Ответ пользователя: "${userAnswer}"`);
+      console.log(`Правильный ответ: "${correctAnswer}"`);
+      
+      // Проверка совпадения ответов разными способами
+      let isCorrect = false;
+      
+      // Проверка 1: Простое сравнение - абсолютно одинаковые строки
+      if (userAnswer === correctAnswer) {
+        console.log("✓ Точное совпадение!");
+        isCorrect = true;
+      } else {
+        // Проверка 2: Нормализованное сравнение
+        if (normalizedUserAnswer === normalizedCorrectAnswer) {
+          console.log("✓ Совпадение после нормализации!");
+          isCorrect = true;
+        }
+        // Проверка 3: Включение одной строки в другую
+        else if (normalizedUserAnswer.includes(normalizedCorrectAnswer)) {
+          console.log("✓ Правильный ответ содержится в ответе пользователя!");
+          isCorrect = true;
+        }
+        else if (normalizedCorrectAnswer.includes(normalizedUserAnswer)) {
+          console.log("✓ Ответ пользователя содержится в правильном ответе!");
+          isCorrect = true;
+        }
+        // Проверка 4: Совпадение первых слов для сложных ответов
+        else if (normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
+                normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
+          console.log("✓ Совпадение по первым словам!");
+          isCorrect = true;
+        }
+        else {
+          console.log("✗ Ответы не совпадают ни по одному из критериев");
+        }
+      }
+      
+      // Финальный результат для этого вопроса
+      console.log(`Итоговая оценка: ${isCorrect ? 'ВЕРНО' : 'НЕВЕРНО'}`);
       
       if (isCorrect) {
         score++;
       } else {
-        // Add to incorrect questions list
+        // Добавляем в список неправильных ответов
         incorrectQuestions.push({
           question: q.q,
           userAnswer: userAnswer,
-          correctAnswer: q.answer
+          correctAnswer: correctAnswer,
+          allVariants: q.variants || [],
+          correctAnswerIndex: (q.variants || []).indexOf(correctAnswer)
         });
+        
+        console.log(`Добавлен в список неправильных ответов. Всего неправильных: ${incorrectQuestions.length}`);
       }
     }
   });
   
-  // Show results
+  // Отображаем результаты теста
   const resultsContainer = document.getElementById('results-container');
   const scoreFraction = document.getElementById('score-fraction');
   const scorePercentage = document.getElementById('score-percentage');
   const scoreProgress = document.getElementById('score-progress');
   
-  // Calculate percentage
-  const percentage = totalAnswered > 0 ? Math.round((score / currentQuestions.length) * 100) : 0;
+  // Посчитаем общее количество вопросов в тесте
+  const totalQuestions = currentQuestions.length;
   
-  // Update result display
-  scoreFraction.textContent = `${score} / ${currentQuestions.length}`;
+  // Calculate percentage out of total questions
+  const percentage = totalAnswered > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+  
+  // Update result display with total questions
+  scoreFraction.textContent = `${score} / ${totalQuestions}`;
   scorePercentage.textContent = `${percentage}%`;
   scoreProgress.style.width = `${percentage}%`;
   
@@ -719,12 +888,27 @@ function finishTest() {
     scoreProgress.className = 'progress-bar bg-danger';
   }
   
+  // Добавляем дополнительную информацию
+  const resultDetails = document.getElementById('result-details');
+  if (resultDetails) {
+    // Если пользователь ответил не на все вопросы
+    if (totalAnswered < totalQuestions) {
+      resultDetails.textContent = `Вы ответили на ${totalAnswered} из ${totalQuestions} вопросов. Правильных ответов: ${score}.`;
+    } else {
+      resultDetails.textContent = `Правильных ответов: ${score} из ${totalQuestions}.`;
+    }
+  }
+  
   // Display incorrect answers if any
   displayIncorrectAnswers();
   
-  // Show results
+  // Show results container
   resultsContainer.classList.remove('d-none');
   resultsContainer.scrollIntoView({ behavior: 'smooth' });
+  
+  // Сообщаем об успешном завершении теста
+  console.log(`Итоговая статистика: ${score} правильных из ${totalAnswered} отвеченных (${percentage}%)`);
+  return score;
 }
 
 // Display incorrect answers
@@ -750,29 +934,64 @@ function displayIncorrectAnswers() {
   const list = document.createElement('div');
   list.className = 'list-group mb-4';
   
-  incorrectQuestions.forEach((item, index) => {
+  // Проходим по списку вопросов и находим соответствующие неправильные ответы
+  for (let i = 0; i < incorrectQuestions.length; i++) {
+    const item = incorrectQuestions[i];
+    const questionNumber = i + 1;
+    
+    // Ищем оригинальный вопрос среди всех вопросов текущего теста
+    let originalQuestionIndex = -1;
+    let originalQuestion = null;
+    
+    // Логгируем для отладки
+    console.log(`Ищем оригинальный вопрос для: "${item.question}"`);
+    
+    for (let j = 0; j < currentQuestions.length; j++) {
+      if (currentQuestions[j].q === item.question) {
+        originalQuestionIndex = j;
+        originalQuestion = currentQuestions[j];
+        break;
+      }
+    }
+    
+    // Создаем элемент списка с информацией о неправильном ответе
     const listItem = document.createElement('div');
     listItem.className = 'list-group-item';
     
-    listItem.innerHTML = `
+    // Формируем содержимое элемента
+    let content = `
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Вопрос ${index + 1}</h5>
+        <h5 class="mb-1">Вопрос ${questionNumber}</h5>
       </div>
       <p class="mb-1">${item.question}</p>
       <div class="d-flex flex-column mt-2">
         <small class="text-danger">
           <i class="fas fa-times me-2"></i>
           Ваш ответ: ${item.userAnswer}
-        </small>
+        </small>`;
+    
+    // Отображаем правильный ответ из оригинального вопроса, если найден
+    if (originalQuestion) {
+      console.log(`Найден оригинальный вопрос: "${originalQuestion.q}" с правильным ответом: "${originalQuestion.answer}"`);
+      content += `
+        <small class="text-success">
+          <i class="fas fa-check me-2"></i>
+          Правильный ответ: ${originalQuestion.answer}
+        </small>`;
+    } else {
+      // Если оригинальный вопрос не найден, используем сохраненный правильный ответ
+      console.log(`Не найден оригинальный вопрос, используем сохраненный ответ: "${item.correctAnswer}"`);
+      content += `
         <small class="text-success">
           <i class="fas fa-check me-2"></i>
           Правильный ответ: ${item.correctAnswer}
-        </small>
-      </div>
-    `;
+        </small>`;
+    }
     
+    content += `</div>`;
+    listItem.innerHTML = content;
     list.appendChild(listItem);
-  });
+  }
   
   container.appendChild(list);
   container.classList.remove('d-none');
