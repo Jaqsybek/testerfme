@@ -5,6 +5,7 @@ let currentQuestionIndex = 0;
 let userAnswers = [];
 let incorrectQuestions = [];
 let currentCategory = null;
+let allTestsMode = false; // Добавляем переменную для режима всех тестов
 
 // Переменные для категории тестов
 let allCategoryTests = [];
