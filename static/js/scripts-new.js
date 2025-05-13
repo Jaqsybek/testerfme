@@ -615,7 +615,7 @@ function displayCurrentQuestion() {
         if (currentQuestionIndex < currentQuestions.length - 1) {
           goToNextQuestion();
         }
-      }, 516000); // Задержка в 6 секунд перед переходом
+      }, 1111516000); // Задержка в 6 секунд перед переходом
     });
     
     formCheck.appendChild(input);
