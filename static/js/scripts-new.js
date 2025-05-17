@@ -11,6 +11,79 @@ let allTestsMode = false; // Добавляем переменную для ре
 let allCategoryTests = [];
 let currentTestIndex = 0;
 
+// Функции для работы с куки
+function setCookie(name, value, days = 30) {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))};expires=${expires.toUTCString()};path=/`;
+}
+
+function getCookie(name) {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) {
+      try {
+        return JSON.parse(decodeURIComponent(c.substring(nameEQ.length, c.length)));
+      } catch (e) {
+        console.error("Ошибка при разборе куки:", e);
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function deleteCookie(name) {
+  document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/';
+}
+
+// Функции для сохранения и загрузки прогресса
+function saveProgress() {
+  // Сохраняем только если есть активный тест
+  if (currentQuestions.length === 0) return;
+  
+  const progress = {
+    category: currentCategory,
+    testName: currentTestName,
+    questionIndex: currentQuestionIndex,
+    answers: userAnswers,
+    questions: currentQuestions,
+    timestamp: new Date().getTime()
+  };
+  
+  setCookie('testProgress', progress);
+  console.log('Прогресс сохранен:', progress);
+}
+
+function loadProgress() {
+  const progress = getCookie('testProgress');
+  if (!progress) return false;
+  
+  // Проверка свежести данных (не старше 7 дней)
+  const now = new Date().getTime();
+  const saved = progress.timestamp || 0;
+  const daysSinceSaved = (now - saved) / (1000 * 60 * 60 * 24);
+  
+  if (daysSinceSaved > 7) {
+    console.log('Сохраненный прогресс устарел (> 7 дней), удаляем');
+    deleteCookie('testProgress');
+    return false;
+  }
+  
+  // Восстановление состояния теста
+  currentCategory = progress.category;
+  currentTestName = progress.testName;
+  currentQuestions = progress.questions;
+  currentQuestionIndex = progress.questionIndex;
+  userAnswers = progress.answers;
+  
+  console.log('Прогресс загружен:', progress);
+  return true;
+}
+
 // Document ready
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Document ready, initializing application');
@@ -22,6 +95,8 @@ document.addEventListener('DOMContentLoaded', function() {
     resetTest();
     document.getElementById('results-container').classList.add('d-none');
     document.getElementById('incorrect-answers-container').classList.add('d-none');
+    // Удаляем куки прогресса при перезапуске теста
+    deleteCookie('testProgress');
   });
   
   document.getElementById('new-test-btn').addEventListener('click', function() {
@@ -34,10 +109,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('test-container').innerHTML = '';
     document.getElementById('test-info').classList.add('d-none');
     document.getElementById('test-selector').value = '';
+    
+    // Удаляем куки прогресса при выборе нового теста
+    deleteCookie('testProgress');
   });
   
   // Обработчик для кнопки "Пройти все тесты в категории" добавляется после загрузки категории
   // Он будет добавлен динамически в функции loadTestsForCategory
+  
+  // Автосохранение прогресса каждые 10 секунд
+  setInterval(saveProgress, 10000);
 });
 
 // Отдельный глобальный обработчик клавиатуры (более надёжный)
@@ -96,6 +177,9 @@ window.onkeydown = function(e) {
       selectedInput.checked = true;
       userAnswers[currentQuestionIndex] = selectedInput.value;
       
+      // Сохраняем прогресс при выборе ответа через клавиатуру
+      saveProgress();
+      
       // Show the correct answer immediately
       highlightCorrectAnswer();
     }
@@ -130,12 +214,46 @@ window.onkeydown = function(e) {
 // Initialize application
 async function init() {
   try {
+    // Проверяем, есть ли сохраненный прогресс
+    const hasProgress = loadProgress();
+    
     // Fetch test categories
     const categories = await fetchTestCategories();
     
     // Create category elements
     const categoryContainer = document.getElementById('category-container');
     categoryContainer.innerHTML = '<h3 class="mb-3">Выберите категорию тестов</h3>';
+    
+    // Если есть сохраненный прогресс, добавляем кнопку для его восстановления
+    if (hasProgress) {
+      const resumeContainer = document.createElement('div');
+      resumeContainer.className = 'alert alert-info mb-4';
+      resumeContainer.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <i class="fas fa-clock me-2"></i>
+            <strong>Найден незавершенный тест:</strong> ${currentTestName}
+            <div class="small text-muted mt-1">Вопрос ${currentQuestionIndex + 1} из ${currentQuestions.length}</div>
+          </div>
+          <button id="resume-test-btn" class="btn btn-primary ms-3">Продолжить</button>
+          <button id="discard-progress-btn" class="btn btn-outline-secondary ms-2">Отменить</button>
+        </div>
+      `;
+      categoryContainer.appendChild(resumeContainer);
+      
+      // Добавляем обработчики для кнопок
+      document.getElementById('resume-test-btn').addEventListener('click', function() {
+        // Отображаем тест с сохраненным прогрессом
+        document.getElementById('test-info').classList.remove('d-none');
+        displaySavedTest();
+      });
+      
+      document.getElementById('discard-progress-btn').addEventListener('click', function() {
+        // Удаляем сохраненный прогресс и перезагружаем страницу
+        deleteCookie('testProgress');
+        window.location.reload();
+      });
+    }
     
     // Create buttons for each category
     const categoryButtonsRow = document.createElement('div');
@@ -149,6 +267,11 @@ async function init() {
       button.className = 'btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center';
       button.setAttribute('data-category', categoryId);
       button.innerHTML = `<span>${categoryName}</span>`;
+      
+      // Если есть сохраненный прогресс, выделяем соответствующую категорию
+      if (hasProgress && categoryId === currentCategory) {
+        button.classList.add('active');
+      }
       
       button.addEventListener('click', function() {
         // Mark this button as active and deactivate others
@@ -173,6 +296,17 @@ async function init() {
     // Setup test selector
     const selector = document.getElementById('test-selector');
     selector.innerHTML = '<option value="">Сначала выберите категорию</option>';
+    
+    // Если есть сохраненный прогресс, загружаем тесты из этой категории
+    if (hasProgress) {
+      await loadTestsForCategory(currentCategory);
+      
+      // Выбираем соответствующий тест в селекторе
+      const testFilename = extractFilenameFromTestName(currentTestName);
+      if (testFilename) {
+        selector.value = testFilename;
+      }
+    }
     
     // Handle test selection
     selector.onchange = async () => {
@@ -235,6 +369,39 @@ async function init() {
     `;
     console.error('Failed to initialize:', error);
   }
+}
+
+// Функция для отображения сохраненного теста
+function displaySavedTest() {
+  // Если есть резюме прогресса, скрываем его
+  const resumeContainer = document.querySelector('.alert.alert-info');
+  if (resumeContainer) {
+    resumeContainer.style.display = 'none';
+  }
+  
+  // Обновляем счетчик вопросов
+  document.getElementById('question-count').textContent = currentQuestions.length;
+  
+  // Отображаем тест
+  displayTest(currentQuestions);
+  
+  // Переходим к сохраненному вопросу
+  goToQuestion(currentQuestionIndex);
+}
+
+// Функция для извлечения имени файла из названия теста
+function extractFilenameFromTestName(testName) {
+  if (!testName) return null;
+  
+  // Пытаемся найти тест с таким именем в селекторе
+  const selector = document.getElementById('test-selector');
+  for (let i = 0; i < selector.options.length; i++) {
+    if (selector.options[i].textContent === testName) {
+      return selector.options[i].value;
+    }
+  }
+  
+  return null;
 }
 
 // Load tests for selected category
@@ -606,6 +773,9 @@ function displayCurrentQuestion() {
     input.addEventListener('change', function() {
       userAnswers[currentQuestionIndex] = this.value;
       
+      // Сохраняем прогресс при выборе ответа
+      saveProgress();
+      
       // Highlight the correct answer immediately
       highlightCorrectAnswer();
       
@@ -615,7 +785,7 @@ function displayCurrentQuestion() {
         if (currentQuestionIndex < currentQuestions.length - 1) {
           goToNextQuestion();
         }
-      }, 1111516000); // Задержка в 6 секунд перед переходом
+      }, 6000); // Задержка в 6 секунд перед переходом
     });
     
     formCheck.appendChild(input);
@@ -692,6 +862,8 @@ function goToNextQuestion() {
   if (currentQuestionIndex < currentQuestions.length - 1) {
     currentQuestionIndex++;
     displayCurrentQuestion();
+    // Сохраняем прогресс при переходе к следующему вопросу
+    saveProgress();
   }
 }
 
@@ -700,6 +872,18 @@ function goToPreviousQuestion() {
   if (currentQuestionIndex > 0) {
     currentQuestionIndex--;
     displayCurrentQuestion();
+    // Сохраняем прогресс при переходе к предыдущему вопросу
+    saveProgress();
+  }
+}
+
+// Navigate to specific question by index
+function goToQuestion(index) {
+  if (index >= 0 && index < currentQuestions.length) {
+    currentQuestionIndex = index;
+    displayCurrentQuestion();
+    // Сохраняем прогресс при переходе к конкретному вопросу
+    saveProgress();
   }
 }
 
