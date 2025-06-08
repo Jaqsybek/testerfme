@@ -532,6 +532,13 @@ function displayTest(questions) {
   
   // Display first question
   displayCurrentQuestion();
+  card.addEventListener('dblclick', function () {
+  const selected = userAnswers[currentQuestionIndex];
+
+  if (selected && currentQuestionIndex < currentQuestions.length - 1) {
+    goToNextQuestion();
+  }
+});
 }
 
 // Display the current question only
