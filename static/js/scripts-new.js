@@ -703,63 +703,60 @@ function goToPreviousQuestion() {
   }
 }
 
-// Highlight the correct answer for the current question
-function highlightCorrectAnswer() {
-  const currentQuestion = currentQuestions[currentQuestionIndex];
-  const correctAnswer = currentQuestion.answer;
-  const options = document.querySelectorAll('.current-question .form-check');
+  // Highlight the correct answer for the current question
+  function highlightCorrectAnswer() {
+    const currentQuestion = currentQuestions[currentQuestionIndex];
+    const correctAnswer = currentQuestion.answer;
+    const options = document.querySelectorAll('.current-question .form-check');
   
-  // Disable all inputs
-  const inputs = document.querySelectorAll('.current-question .form-check-input');
-  inputs.forEach(input => {
-    input.disabled = true;
-  });
+    // Disable all inputs
+    const inputs = document.querySelectorAll('.current-question .form-check-input');
+    inputs.forEach(input => {
+      input.disabled = true;
+    });
   
-  // Find the selected answer
-  const selectedAnswer = userAnswers[currentQuestionIndex];
+    // Find the selected answer
+    const selectedAnswer = userAnswers[currentQuestionIndex];
   
-  // Нормализуем строки для более точного сравнения
-  const normalizedUserAnswer = selectedAnswer ? selectedAnswer.trim().toLowerCase() : '';
-  const normalizedCorrectAnswer = correctAnswer ? correctAnswer.trim().toLowerCase() : '';
+    // Нормализуем строки для строгого сравнения
+    const normalizedUserAnswer = selectedAnswer ? selectedAnswer.trim().toLowerCase() : '';
+    const normalizedCorrectAnswer = correctAnswer ? correctAnswer.trim().toLowerCase() : '';
   
-  console.log(`Выбран ответ: "${selectedAnswer}"`);
-  console.log(`Правильный ответ: "${correctAnswer}"`);
+    const isCorrect = normalizedUserAnswer === normalizedCorrectAnswer;
   
-  // Проверяем более гибким способом (точное совпадение или включение)
-  let isCorrect = normalizedUserAnswer === normalizedCorrectAnswer || 
-                 normalizedUserAnswer.includes(normalizedCorrectAnswer) ||
-                 normalizedCorrectAnswer.includes(normalizedUserAnswer);
+    console.log(`Выбран ответ: "${selectedAnswer}"`);
+    console.log(`Правильный ответ: "${correctAnswer}"`);
+    console.log(`Совпадение ответов: ${isCorrect ? 'Да' : 'Нет'}`);
   
-  // Дополнительная проверка по первым словам для сложных ответов
-  if (!isCorrect && normalizedUserAnswer && normalizedCorrectAnswer &&
-      normalizedUserAnswer.split(' ')[0] === normalizedCorrectAnswer.split(' ')[0] && 
-      normalizedUserAnswer.length > 5 && normalizedCorrectAnswer.length > 5) {
-    isCorrect = true;
-  }
+    // Highlight correct and incorrect options
+    options.forEach(option => {
+      const input = option.querySelector('input');
+      const label = option.querySelector('label');
   
-  console.log(`Совпадение ответов: ${isCorrect ? 'Да' : 'Нет'}`);
-  
-  // Highlight correct and incorrect options
-  options.forEach(option => {
-    const input = option.querySelector('input');
-    const label = option.querySelector('label');
-    
-    if (input.value === correctAnswer) {
-      // Правильный ответ
-      option.classList.add('option-correct');
-      if (!label.innerHTML.includes('fa-check')) {
-        label.innerHTML += ' <i class="fas fa-check text-success"></i>';
-      }
-    } else if (input.checked) {
-      // Неправильный выбранный ответ
-      if (!isCorrect) {
+      if (input.value.trim().toLowerCase() === normalizedCorrectAnswer) {
+        // Правильный ответ
+        option.classList.add('option-correct');
+        if (!label.innerHTML.includes('fa-check')) {
+          label.innerHTML += ' <i class="fas fa-check text-success"></i>';
+        }
+      } else if (input.checked && !isCorrect) {
+        // Неправильный выбранный ответ
         option.classList.add('option-incorrect');
         if (!label.innerHTML.includes('fa-times')) {
           label.innerHTML += ' <i class="fas fa-times text-danger"></i>';
         }
       }
+    });
+  
+    // Add appropriate class to the question card
+    const questionCard = document.querySelector('.current-question');
+    if (isCorrect) {
+      questionCard.classList.add('correct-answer');
+    } else {
+      questionCard.classList.add('incorrect-answer');
     }
-  });
+  }
+
   
   // Add appropriate class to the question card
   const questionCard = document.querySelector('.current-question');
