@@ -765,7 +765,7 @@ function goToPreviousQuestion() {
   } else {
     questionCard.classList.add('incorrect-answer');
   }
-}
+
 
 // Finish the test and show results
 function finishTest() {
