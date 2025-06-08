@@ -782,11 +782,11 @@ function displayCurrentQuestion() {
       // Automatically go to next question after a delay
       setTimeout(() => {
           // Только если это не последний вопрос
-         // setTimeout(() => {
-          //   if (currentQuestionIndex < currentQuestions.length - 1) {
-          //     goToNextQuestion();
-          //   }
-          // }, 3000);;
+         setTimeout(() => {
+           if (currentQuestionIndex < currentQuestions.length - 1) {
+              goToNextQuestion();
+             }
+           }, 3000);;
     
     formCheck.appendChild(input);
     formCheck.appendChild(label);
