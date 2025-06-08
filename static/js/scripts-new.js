@@ -781,12 +781,12 @@ function displayCurrentQuestion() {
       
       // Automatically go to next question after a delay
       setTimeout(() => {
-        // Только если это не последний вопрос
-        if (currentQuestionIndex < currentQuestions.length - 1) {
-          goToNextQuestion();
-        }
-      },121212121212111111111111111111 ); // Задержка не в 6 секунд перед переходом сечас просто костлыь 
-    });
+          // Только если это не последний вопрос
+         // setTimeout(() => {
+          //   if (currentQuestionIndex < currentQuestions.length - 1) {
+          //     goToNextQuestion();
+          //   }
+          // }, 3000);;
     
     formCheck.appendChild(input);
     formCheck.appendChild(label);
