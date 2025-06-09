@@ -42,7 +42,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Отдельный глобальный обработчик клавиатуры (более надёжный)
 window.onkeydown = function(e) {
-  console.log('Global key pressed:', e.key);
+  // Защита: если фокус в select, input или textarea — не мешаем
+  const tag = document.activeElement.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') {
+    return;
+  }
+
+  // Ниже — твоя существующая логика...
+
   
   // Проверяем, что вопросы загружены и тест активен
   if (currentQuestions.length === 0) {
@@ -615,7 +622,7 @@ function displayCurrentQuestion() {
         if (currentQuestionIndex < currentQuestions.length - 1) {
           goToNextQuestion();
         }
-      }, 6000); // Задержка в 6 секунд перед переходом
+      }, 6000000000); // Задержка в 60000 секунд перед переходом
     });
     
     formCheck.appendChild(input);
