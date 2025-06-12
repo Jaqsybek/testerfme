@@ -42,13 +42,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Отдельный глобальный обработчик клавиатуры (более надёжный)
 window.onkeydown = function(e) {
+  // 🔒 Защита от случайных нажатий, если фокус в input, select или textarea
+  const tag = document.activeElement.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') {
+    console.log('Focus is on input/select, ignoring key press:', e.key);
+    return;
+  }
+
   console.log('Global key pressed:', e.key);
   
   // Проверяем, что вопросы загружены и тест активен
   if (currentQuestions.length === 0) {
     console.log('Ignoring key press: no questions loaded');
-    return; // Игнорируем нажатия клавиш, если вопросы не загружены
+    return;
   }
+
+  // ... остальная обработка клавиш
+};
   
   // Проверяем, что результаты не отображаются (тест в процессе)
   const resultsContainer = document.getElementById('results-container');
