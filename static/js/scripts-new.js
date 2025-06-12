@@ -1189,7 +1189,9 @@ function finishTest() {
         correctIndex = q.variants.indexOf(correctAnswer);
       }
       
-      const isCorrect = parseInt(userAnswer) === correctIndex;
+        const normalizedUserAnswer = userAnswer.trim().toLowerCase();
+        const normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+        const isCorrect = normalizedUserAnswer === normalizedCorrectAnswer;
       
       if (isCorrect) {
         score++;
