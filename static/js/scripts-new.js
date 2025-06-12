@@ -1366,14 +1366,11 @@ function retryIncorrectQuestions() {
     return;
   }
 
-  // Создаем новый тест только из неправильных вопросов
-  currentQuestions = incorrectQuestions.map(item => {
-    return {
-      q: item.question,
-      variants: item.allVariants,
-      answer: item.correctAnswer
-    };
-  });
+  currentQuestions = incorrectQuestions.map(item => ({
+    q: item.question,
+    variants: item.allVariants || [], // 🛠 защита от undefined
+    answer: item.correctAnswer
+  }));
 
   currentTestName = 'Повторение ошибок';
   currentQuestionIndex = 0;
