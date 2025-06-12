@@ -1242,7 +1242,8 @@ function finishTest() {
         incorrectQuestions.push({
           question: q.q,
           userAnswer: userAnswer,
-          correctAnswer: correctAnswer
+          correctAnswer: correctAnswer,
+          allVariants: q.variants || []
         });
       }
     }
