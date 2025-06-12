@@ -1335,3 +1335,34 @@ function finishTest() {
 function checkAnswers(questions) {
   finishTest();
 }
+// Добавим кнопку "Повторить ошибки"
+const retryErrorsBtn = document.createElement('button');
+retryErrorsBtn.className = 'btn btn-outline-danger mt-4';
+retryErrorsBtn.innerHTML = '<i class="fas fa-redo-alt me-2"></i>Повторить только неправильные вопросы';
+retryErrorsBtn.onclick = retryIncorrectQuestions;
+
+resultsContainer.appendChild(retryErrorsBtn);
+function retryIncorrectQuestions() {
+  if (incorrectQuestions.length === 0) {
+    alert('Нет неправильных ответов для повторения!');
+    return;
+  }
+
+  // Создаем новый тест только из неправильных вопросов
+  currentQuestions = incorrectQuestions.map(item => {
+    return {
+      q: item.question,
+      variants: item.allVariants,
+      answer: item.correctAnswer
+    };
+  });
+
+  currentTestName = 'Повторение ошибок';
+  currentQuestionIndex = 0;
+  userAnswers = new Array(currentQuestions.length).fill(null);
+  incorrectQuestions = [];
+
+  displayCurrentQuestion();
+  document.getElementById('results-container').classList.add('d-none');
+  document.getElementById('incorrect-answers-container').classList.add('d-none');
+}
