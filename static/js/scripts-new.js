@@ -719,12 +719,46 @@ function highlightCorrectAnswer() {
   const currentQuestion = currentQuestions[currentQuestionIndex];
   const correctAnswer = currentQuestion.answer;
   const options = document.querySelectorAll('.current-question .form-check');
-  
-  // Disable all inputs
+
   const inputs = document.querySelectorAll('.current-question .form-check-input');
   inputs.forEach(input => {
     input.disabled = true;
   });
+
+  const selectedAnswer = userAnswers[currentQuestionIndex];
+  const normalizedUserAnswer = selectedAnswer ? selectedAnswer.trim().toLowerCase() : '';
+  const normalizedCorrectAnswer = correctAnswer ? correctAnswer.trim().toLowerCase() : '';
+
+  options.forEach(option => {
+    const input = option.querySelector('input');
+    const label = option.querySelector('label');
+    const valueNormalized = input.value.trim().toLowerCase();
+
+    const isUserChoice = input.checked;
+    const isCorrectOption = valueNormalized === normalizedCorrectAnswer;
+
+    if (isCorrectOption) {
+      option.classList.add('option-correct');
+      if (!label.innerHTML.includes('fa-check')) {
+        label.innerHTML += ' <i class="fas fa-check text-success"></i>';
+      }
+    }
+
+    if (isUserChoice && !isCorrectOption) {
+      option.classList.add('option-incorrect');
+      if (!label.innerHTML.includes('fa-times')) {
+        label.innerHTML += ' <i class="fas fa-times text-danger"></i>';
+      }
+    }
+  });
+
+  const questionCard = document.querySelector('.current-question');
+  if (normalizedUserAnswer === normalizedCorrectAnswer) {
+    questionCard.classList.add('correct-answer');
+  } else {
+    questionCard.classList.add('incorrect-answer');
+  }
+}
   
   // Find the selected answer
   const selectedAnswer = userAnswers[currentQuestionIndex];
