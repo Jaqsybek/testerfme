@@ -185,6 +185,8 @@ async function init() {
     
     // Handle test selection
     selector.onchange = async () => {
+    selector.blur(); // Снимаем фокус с селектора, чтобы цифры не переключали тест
+
       if (!selector.value) return;
       
       // Get the selected category
