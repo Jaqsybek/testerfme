@@ -1,3 +1,4 @@
+let parseErrors = [];
 // Global variables
 let currentQuestions = [];
 let currentTestName = '';
@@ -227,6 +228,7 @@ async function init() {
         
         // Display test questions
         displayTest(currentQuestions);
+        showParseErrors();
       } catch (error) {
         document.getElementById('test-container').innerHTML = `
           <div class="alert alert-danger">
@@ -1381,4 +1383,18 @@ function retryIncorrectQuestions() {
   displayCurrentQuestion();
   document.getElementById('results-container').classList.add('d-none');
   document.getElementById('incorrect-answers-container').classList.add('d-none');
+}
+
+
+function showParseErrors() {
+  const container = document.getElementById('parse-errors-container');
+  if (!container || !parseErrors || parseErrors.length === 0) return;
+
+  container.classList.remove('d-none');
+  container.innerHTML = `
+    <h5 class="mb-2 text-warning">⚠️ Ошибки при загрузке теста:</h5>
+    <ul class="mb-0">
+      ${parseErrors.map(err => `<li>${err}</li>`).join('')}
+    </ul>
+  `;
 }
