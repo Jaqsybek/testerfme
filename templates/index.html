@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,7 +31,7 @@
         <div id="category-container" class="mb-4">
           <!-- Будет заполнено через JavaScript -->
         </div>
-        
+
         <!-- Контейнер для выбора теста (изначально скрыт) -->
         <div id="test-selector-container" class="mb-3 d-none">
           <h4 class="mb-3">Выберите тест</h4>
@@ -49,7 +50,7 @@
             </div>
           </div>
         </div>
-        
+
         <div id="test-info" class="d-none">
           <div class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i>
@@ -57,7 +58,7 @@
             Варианты ответов перемешиваются для лучшей практики.
           </div>
         </div>
-        
+
         <div class="mt-3">
           <a href="/upload" class="btn btn-outline-primary btn-sm me-2">
             <i class="fas fa-upload me-2"></i>Загрузить файл теста
@@ -67,7 +68,7 @@
     </div>
 
     <div id="test-container" class="mb-4"></div>
-    
+
     <div id="results-container" class="d-none">
       <div class="card">
         <div class="card-header bg-primary text-white">
@@ -92,10 +93,15 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Incorrect answers section -->
     <div id="incorrect-answers-container" class="d-none mt-4">
       <!-- Content will be generated dynamically via JavaScript -->
+    </div>
+
+    <!-- Ошибки парсера -->
+    <div id="parse-errors-container" class="alert alert-warning d-none mt-4">
+      <!-- Ошибки загрузки тестов появятся здесь -->
     </div>
 
     <footer class="mt-5 text-center text-muted">
