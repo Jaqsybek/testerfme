@@ -1446,6 +1446,18 @@ function showAlgorithm(index) {
     });
   };
 }
+document.getElementById('show-algorithms-btn').addEventListener('click', () => {
+  document.getElementById('algorithms-container').classList.remove('d-none');
+  const list = document.getElementById('algorithm-list');
+  list.innerHTML = '';
+  algorithmData.forEach((alg, index) => {
+    const item = document.createElement('li');
+    item.className = 'list-group-item list-group-item-action';
+    item.textContent = alg.title;
+    item.onclick = () => showAlgorithm(index);
+    list.appendChild(item);
+  });
+});
 const algorithmData = [
   {
     title: "Алгоритм при анафилаксии",
