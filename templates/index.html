@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,7 +67,23 @@
     </div>
 
     <div id="test-container" class="mb-4"></div>
-
+        <!-- Кнопка Алгоритмы -->
+    <div class="text-center my-4">
+      <button id="show-algorithms-btn" class="btn btn-success">
+        <i class="fas fa-dna me-2"></i> Алгоритмы
+      </button>
+    </div>
+    
+    <!-- Контейнер для алгоритмов -->
+    <div id="algorithms-container" class="d-none">
+      <h3 class="mb-3">Выберите алгоритм:</h3>
+      <ul id="algorithm-list" class="list-group mb-4"></ul>
+      <div id="algorithm-interactive" class="card d-none p-3">
+        <h4 id="algorithm-title" class="mb-3"></h4>
+        <ul id="algorithm-steps" class="list-group mb-3"></ul>
+        <button id="check-order-btn" class="btn btn-primary">Проверить порядок</button>
+      </div>
+    </div>
     <div id="results-container" class="d-none">
       <div class="card">
         <div class="card-header bg-primary text-white">
