@@ -68,11 +68,15 @@
 
     <div id="test-container" class="mb-4"></div>
         <!-- Кнопка Алгоритмы -->
-    <div class="text-center my-4">
-      <button id="show-algorithms-btn" class="btn btn-success">
-        <i class="fas fa-dna me-2"></i> Алгоритмы
-      </button>
-    </div>
+    <div id="algorithms-container" class="d-none">
+      <button id="show-algorithms-btn">Алгоритмы</button>
+  <ul id="algorithm-list"></ul>
+  <div id="algorithm-interactive" class="d-none">
+    <h4 id="algorithm-title"></h4>
+    <ul id="algorithm-steps"></ul>
+    <button id="check-order-btn">Проверить порядок</button>
+  </div>
+</div>
     
     <!-- Контейнер для алгоритмов -->
     <div id="algorithms-container" class="d-none">
