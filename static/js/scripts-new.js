@@ -1424,6 +1424,7 @@ function showAlgorithm(index) {
     });
   };
 }
+document.getElementById('show-algorithms-btn')…
 const algorithmData = [
   {
     title: "Алгоритм при анафилаксии",
