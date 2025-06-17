@@ -57,7 +57,6 @@ window.onkeydown = function(e) {
     return;
   }
 
-  // ... остальная обработка клавиш
   
   // Проверяем, что результаты не отображаются (тест в процессе)
   const resultsContainer = document.getElementById('results-container');
