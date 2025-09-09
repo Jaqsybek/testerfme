@@ -14,7 +14,8 @@ app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
 TESTS_DIRS = {
     'main': 'attached_assets',   # Original tests directory
     'additional': 'additional_tests',  # New directory for additional tests
-    'uploaded': 'tests'  # Directory for user-uploaded tests
+    'uploaded': 'tests',  # Directory for user-uploaded tests
+    'full_2024': 'full_2024_test'  # Directory for full 2024 tests
 }
 
 # Ensure all test directories exist
@@ -32,7 +33,8 @@ def get_test_categories():
     categories = {
         'main': 'Основные тесты(в начале июня скнули)',
         'additional': 'Дополнительные тесты(русс прощлый год)',
-        'uploaded': 'Загруженные тесты (пролый месяй каз)'
+        'uploaded': 'Загруженные тесты (пролый месяй каз)',
+        'full_2024': 'Полный Каз 2025'
     }
     return jsonify(categories)
 
@@ -65,7 +67,6 @@ def get_test_file(category, filename):
             return "Invalid filename", 400
         
         directory = TESTS_DIRS[category]
-        
         # Serve the file
         return send_from_directory(directory, filename)
     except Exception as e:
