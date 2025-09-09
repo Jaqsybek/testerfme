@@ -31,9 +31,9 @@ def index():
 def get_test_categories():
     """Return the list of test categories."""
     categories = {
-        'main': 'Основные тесты(в начале июня скнули)',
-        'additional': 'Дополнительные тесты(русс прощлый год)',
-        'uploaded': 'Загруженные тесты (пролый месяй каз)',
+        'main': 'Каз 2024)',
+        'additional': 'Русс 2023',
+        'uploaded': 'Каз 2024 версия 2',
         'full_2024': 'Полный Каз 2025'
     }
     return jsonify(categories)
