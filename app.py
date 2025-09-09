@@ -23,20 +23,30 @@ TESTS_DIRS = {
 for directory in TESTS_DIRS.values():
     os.makedirs(directory, exist_ok=True)
 
-# Function to sanitize filenames
+# Function to sanitize and display filenames
 def sanitize_filename(filename):
-    """Convert filename to safe format: keep alphanumeric, replace spaces with underscores, transliterate Cyrillic."""
-    safe_filename = ""
-    for c in filename:
-        if c.isalnum() or c == '.':
-            safe_filename += c
-        elif c.isspace():
-            safe_filename += '_'
-        # Skip other special characters
-    safe_filename = re.sub(r'[^a-zA-Z0-9._]', '_', safe_filename)
-    if not safe_filename.endswith('.txt'):
-        safe_filename += '.txt'
-    return safe_filename
+    """Convert filename to safe and readable format for frontend."""
+    # Extract number from filenames like __________________________96_____.txt
+    match = re.match(r'_+\d+_+\.txt$', filename)
+    if match:
+        number = re.search(r'\d+', filename).group()
+        display_name = f"Тест {number}"
+        safe_filename = f"test_{number}.txt"
+    else:
+        # Fallback for other filenames
+        safe_filename = ""
+        for c in filename:
+            if c.isalnum() or c == '.':
+                safe_filename += c
+            elif c.isspace():
+                safe_filename += '_'
+        safe_filename = re.sub(r'[^a-zA-Z0-9._]', '_', safe_filename)
+        if not safe_filename.endswith('.txt'):
+            safe_filename += '.txt'
+        display_name = safe_filename.replace('_', ' ').replace('.txt', '')
+    # Remove multiple consecutive underscores
+    safe_filename = re.sub(r'_+', '_', safe_filename)
+    return safe_filename, display_name
 
 @app.route('/')
 def index():
@@ -56,7 +66,7 @@ def get_test_categories():
 
 @app.route('/tests/<category>')
 def get_tests(category):
-    """Return a list of available test files for a specific category."""
+    """Return a list of available test files with display names for a specific category."""
     try:
         if category not in TESTS_DIRS:
             return jsonify({"error": "Категория не найдена"}), 404
@@ -64,11 +74,17 @@ def get_tests(category):
         directory = TESTS_DIRS[category]
         # Get all .txt files in the specified directory
         test_files = [os.path.basename(f) for f in glob.glob(f"{directory}/*.txt")]
-        # Sanitize filenames for frontend
-        safe_test_files = [sanitize_filename(f) for f in test_files]
-        # Sort alphabetically
-        safe_test_files.sort()
-        return jsonify(safe_test_files)
+        # Create list of {safe_filename, display_name} for each file
+        test_files_info = []
+        for f in test_files:
+            safe_filename, display_name = sanitize_filename(f)
+            test_files_info.append({
+                "filename": safe_filename,
+                "display_name": display_name
+            })
+        # Sort by display_name
+        test_files_info.sort(key=lambda x: x["display_name"])
+        return jsonify(test_files_info)
     except Exception as e:
         logging.error(f"Error getting test files for category {category}: {e}")
         return jsonify([]), 500
@@ -88,7 +104,8 @@ def get_test_file(category, filename):
         # Find the actual file that matches the sanitized filename
         test_files = [os.path.basename(f) for f in glob.glob(f"{directory}/*.txt")]
         for actual_filename in test_files:
-            if sanitize_filename(actual_filename) == filename:
+            safe_filename, _ = sanitize_filename(actual_filename)
+            if safe_filename == filename:
                 return send_from_directory(directory, actual_filename)
         
         return "Файл не найден", 404
@@ -117,7 +134,7 @@ def upload_file():
             # Ensure valid filename
             filename = os.path.basename(str(file.filename))
             # Sanitize filename
-            safe_filename = sanitize_filename(filename)
+            safe_filename, _ = sanitize_filename(filename)
             
             if '..' in safe_filename or '/' in safe_filename:
                 flash('Недопустимое имя файла', 'danger')
