@@ -150,56 +150,47 @@ async function init() {
     selector.innerHTML = '<option value="">Сначала выберите категорию</option>';
     
     selector.onchange = async () => {
-      selector.blur();
-      if (!selector.value) return;
-      
-      if (!currentCategory) {
-        alert('Пожалуйста, выберите категорию тестов');
-        selector.value = '';
-        return;
-      }
-      
-      currentTestName = selector.options[selector.selectedIndex].textContent;
-      document.getElementById('test-container').innerHTML = `
-        <div class="text-center py-5">
-          <span class="loader"></span>
-          <p class="mt-3">Загрузка содержимого теста...</p>
-        </div>
-      `;
-      
-      try {
-        const content = await fetchTestFile(currentCategory, selector.value);
-        currentQuestions = parseTest(content);
-        currentQuestions = shuffle(currentQuestions);
-        document.getElementById('question-count').textContent = currentQuestions.length;
-        
-        const filenameMatch = selector.value.match(/(\d+)\.txt$/);
-        if (filenameMatch && parseInt(filenameMatch[1]) !== currentQuestions.length) {
-          console.warn(`Внимание: В названии файла указано ${filenameMatch[1]} вопросов, но найдено только ${currentQuestions.length}`);
-        }
-        
-        document.getElementById('test-info').classList.remove('d-none');
-        displayTest(currentQuestions);
-      } catch (error) {
-        document.getElementById('test-container').innerHTML = `
-          <div class="alert alert-danger">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Ошибка загрузки теста: ${error.message}
-          </div>
-        `;
-      }
-    };
+  selector.blur();
+  if (!selector.value) return;
+  if (!currentCategory) {
+    alert('Пожалуйста, выберите категорию тестов');
+    selector.value = '';
+    return;
+  }
+  currentTestName = selector.options[selector.selectedIndex].textContent;
+  document.getElementById('test-container').innerHTML = `
+    <div class="text-center py-5">
+      <span class="loader"></span>
+      <p class="mt-3">Загрузка содержимого теста...</p>
+    </div>
+  `;
+  try {
+    const content = await fetchTestFile(currentCategory, selector.value);
+    currentQuestions = parseTest(content);
+    currentQuestions = shuffle(currentQuestions);
+    const testInfo = document.getElementById('test-info');
+    testInfo.classList.remove('d-none');
+    const questionCountElement = document.getElementById('question-count');
+    if (questionCountElement) {
+      questionCountElement.textContent = currentQuestions.length;
+    } else {
+      console.warn('Элемент с ID "question-count" не найден в DOM');
+    }
+    const filenameMatch = selector.value.match(/(\d+)\.txt$/);
+    if (filenameMatch && parseInt(filenameMatch[1]) !== currentQuestions.length) {
+      console.warn(`Внимание: В названии файла указано ${filenameMatch[1]} вопросов, но найдено только ${currentQuestions.length}`);
+    }
+    displayTest(currentQuestions);
   } catch (error) {
-    const categoryContainer = document.getElementById('category-container');
-    categoryContainer.innerHTML = `
+    document.getElementById('test-container').innerHTML = `
       <div class="alert alert-danger">
         <i class="fas fa-exclamation-triangle me-2"></i>
-        Ошибка инициализации: ${error.message}
+        Ошибка загрузки теста: ${error.message}
       </div>
     `;
-    console.error('Failed to initialize:', error);
+    console.error('Ошибка в selector.onchange:', error);
   }
-}
+};
 
 // Load tests for selected category
 async function loadTestsForCategory(category) {
