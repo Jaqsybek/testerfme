@@ -14,8 +14,7 @@ app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
 TESTS_DIRS = {
     'main': 'attached_assets',   # Original tests directory
     'additional': 'additional_tests',  # New directory for additional tests
-    'uploaded': 'tests',  # Directory for user-uploaded tests
-    'full_2024': 'full_2024_test'  # New directory for 2024 full tests
+    'uploaded': 'tests'  # Directory for user-uploaded tests
 }
 
 # Ensure all test directories exist
@@ -31,10 +30,9 @@ def index():
 def get_test_categories():
     """Return the list of test categories."""
     categories = {
-        'main': 'Основные тесты (в начале июня скинули)',
-        'additional': 'Дополнительные тесты (русский прошлый год)',
-        'uploaded': 'Загруженные тесты (прошлый месяц каз)',
-        'full_2024': 'Полный Каз 2025'
+        'main': 'Основные тесты(в начале июня скнули)',
+        'additional': 'Дополнительные тесты(русс прощлый год)',
+        'uploaded': 'Загруженные тесты (пролый месяй каз)'
     }
     return jsonify(categories)
 
@@ -67,6 +65,7 @@ def get_test_file(category, filename):
             return "Invalid filename", 400
         
         directory = TESTS_DIRS[category]
+        
         # Serve the file
         return send_from_directory(directory, filename)
     except Exception as e:
@@ -93,17 +92,31 @@ def upload_file():
         if file and file.filename and file.filename.endswith('.txt'):
             # Ensure valid filename
             filename = os.path.basename(str(file.filename))
-            # Use original filename without sanitization
-            if '..' in filename or '/' in filename:
+            # Transliterate Cyrillic characters and remove spaces and special characters
+            safe_filename = ""
+            for c in filename:
+                if c.isalnum() or c == '.':
+                    safe_filename += c
+                elif c.isspace():
+                    safe_filename += '_'
+                # Skip other special characters
+            
+            # Make sure we have a valid filename after cleaning
+            if not safe_filename or safe_filename == '.txt':
+                safe_filename = 'test_file.txt'
+            elif not safe_filename.endswith('.txt'):
+                safe_filename += '.txt'
+                
+            if '..' in safe_filename or '/' in safe_filename:
                 flash('Недопустимое имя файла', 'danger')
                 return redirect(request.url)
             
             # Save the file
             uploads_dir = TESTS_DIRS['uploaded']
-            filepath = os.path.join(uploads_dir, filename)
+            filepath = os.path.join(uploads_dir, safe_filename)
             file.save(filepath)
             
-            flash(f'Файл {filename} успешно загружен', 'success')
+            flash(f'Файл {safe_filename} успешно загружен', 'success')
             return redirect(url_for('index'))
         else:
             flash('Разрешены только файлы .txt', 'danger')
