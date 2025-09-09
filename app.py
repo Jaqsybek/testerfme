@@ -2,6 +2,7 @@ import os
 import logging
 from flask import Flask, render_template, jsonify, send_from_directory, request, redirect, url_for, flash
 import glob
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -22,6 +23,21 @@ TESTS_DIRS = {
 for directory in TESTS_DIRS.values():
     os.makedirs(directory, exist_ok=True)
 
+# Function to sanitize filenames
+def sanitize_filename(filename):
+    """Convert filename to safe format: keep alphanumeric, replace spaces with underscores, transliterate Cyrillic."""
+    safe_filename = ""
+    for c in filename:
+        if c.isalnum() or c == '.':
+            safe_filename += c
+        elif c.isspace():
+            safe_filename += '_'
+        # Skip other special characters
+    safe_filename = re.sub(r'[^a-zA-Z0-9._]', '_', safe_filename)
+    if not safe_filename.endswith('.txt'):
+        safe_filename += '.txt'
+    return safe_filename
+
 @app.route('/')
 def index():
     """Render the main application page."""
@@ -31,10 +47,10 @@ def index():
 def get_test_categories():
     """Return the list of test categories."""
     categories = {
-        'main': 'Основные тесты (в начале июня скинули)',
-        'additional': 'Дополнительные тесты (русский прошлый год)',
-        'uploaded': 'Загруженные тесты (прошлый месяц каз)',
-        'full_2024': 'Полный относительно 2024'
+        'main': 'Каз 2024',
+        'additional': 'Рус 2024',
+        'uploaded': 'Каз 2025 ver 2',
+        'full_2024': 'Полный относительно 2024 (скинули под конец)'
     }
     return jsonify(categories)
 
@@ -48,9 +64,11 @@ def get_tests(category):
         directory = TESTS_DIRS[category]
         # Get all .txt files in the specified directory
         test_files = [os.path.basename(f) for f in glob.glob(f"{directory}/*.txt")]
+        # Sanitize filenames for frontend
+        safe_test_files = [sanitize_filename(f) for f in test_files]
         # Sort alphabetically
-        test_files.sort()
-        return jsonify(test_files)
+        safe_test_files.sort()
+        return jsonify(safe_test_files)
     except Exception as e:
         logging.error(f"Error getting test files for category {category}: {e}")
         return jsonify([]), 500
@@ -67,9 +85,13 @@ def get_test_file(category, filename):
             return "Invalid filename", 400
         
         directory = TESTS_DIRS[category]
+        # Find the actual file that matches the sanitized filename
+        test_files = [os.path.basename(f) for f in glob.glob(f"{directory}/*.txt")]
+        for actual_filename in test_files:
+            if sanitize_filename(actual_filename) == filename:
+                return send_from_directory(directory, actual_filename)
         
-        # Serve the file
-        return send_from_directory(directory, filename)
+        return "Файл не найден", 404
     except Exception as e:
         logging.error(f"Error serving test file {category}/{filename}: {e}")
         return "Файл не найден", 404
@@ -94,21 +116,9 @@ def upload_file():
         if file and file.filename and file.filename.endswith('.txt'):
             # Ensure valid filename
             filename = os.path.basename(str(file.filename))
-            # Transliterate Cyrillic characters and remove spaces and special characters
-            safe_filename = ""
-            for c in filename:
-                if c.isalnum() or c == '.':
-                    safe_filename += c
-                elif c.isspace():
-                    safe_filename += '_'
-                # Skip other special characters
+            # Sanitize filename
+            safe_filename = sanitize_filename(filename)
             
-            # Make sure we have a valid filename after cleaning
-            if not safe_filename or safe_filename == '.txt':
-                safe_filename = 'test_file.txt'
-            elif not safe_filename.endswith('.txt'):
-                safe_filename += '.txt'
-                
             if '..' in safe_filename or '/' in safe_filename:
                 flash('Недопустимое имя файла', 'danger')
                 return redirect(request.url)
