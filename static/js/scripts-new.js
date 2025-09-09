@@ -452,7 +452,7 @@ function displayCurrentQuestion() {
         if (currentQuestionIndex < currentQuestions.length - 1) {
           goToNextQuestion();
         }
-      }, 600);
+      }, 600000);
     });
     formCheck.appendChild(input);
     formCheck.appendChild(label);
