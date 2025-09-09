@@ -230,7 +230,7 @@ async function fetchTestList(category) {
 
 // Fetch test file content
 async function fetchTestFile(category, filename) {
-  const response = await fetch(`/tests/${category}/${encodeURIComponent(filename)}`);
+  const response = await fetch(`/tests/${category}/${filename}`);
   if (!response.ok) {
     throw new Error('Не удалось загрузить содержимое теста');
   }
@@ -240,65 +240,132 @@ async function fetchTestFile(category, filename) {
 // Parse test content
 function parseTest(content) {
   console.log("Начинаем парсинг теста");
-  const lines = content.split('\n');
+  let processedContent = '';
+  const contentLines = content.split('\n');
+  let hasPlusMinusFormat = false;
+  for (const line of contentLines) {
+    if (line.trim().startsWith('+') || line.trim().startsWith('-')) {
+      hasPlusMinusFormat = true;
+      break;
+    }
+  }
+  console.log("Формат теста с +/- символами: " + (hasPlusMinusFormat ? "Да" : "Нет"));
+  for (const line of contentLines) {
+    let processedLine = line;
+    if (line.trim().startsWith('?')) {
+      processedLine = line.replace(/^\s*\?\s*/, '<question>');
+    } else if (line.trim().startsWith('+')) {
+      processedLine = line.replace(/^\s*\+\s*/, '<variant>+++');
+    } else if (line.trim().startsWith('-')) {
+      processedLine = line.replace(/^\s*\-\s*/, '<variant>');
+    }
+    processedContent += processedLine + '\n';
+  }
+  const lines = processedContent.split('\n');
   const questions = [];
   let currentQuestion = null;
   let currentVariants = [];
   let correctAnswerIndex = 0;
   const MAX_VARIANTS = 5;
-
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    if (line.startsWith('<question>')) {
-      // Save previous question if exists
-      if (currentQuestion && currentVariants.length > 0) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    if (
+      trimmedLine.startsWith('<question>') ||
+      trimmedLine.startsWith('<question ') ||
+      trimmedLine.match(/^<question\s*>/) ||
+      trimmedLine.match(/^\d+\s*\.\s*<question>/) ||
+      trimmedLine.match(/^\d+\s*\.\s*<question\s*>/)
+    ) {
+      if (currentQuestion) {
         if (currentVariants.length > MAX_VARIANTS) {
           console.warn(`Вопрос "${currentQuestion}" имеет ${currentVariants.length} вариантов. Оставляем только первые ${MAX_VARIANTS}.`);
           currentVariants = currentVariants.slice(0, MAX_VARIANTS);
         }
+        if (correctAnswerIndex >= currentVariants.length) {
+          correctAnswerIndex = 0;
+          console.warn(`Индекс правильного ответа превышает количество вариантов, устанавливаем первый вариант как правильный.`);
+        }
         questions.push({
           q: currentQuestion,
           variants: currentVariants,
-          answer: currentVariants[correctAnswerIndex] // First variant is correct
+          answer: currentVariants[correctAnswerIndex]
         });
         console.log(`Добавлен вопрос "${currentQuestion}" с ${currentVariants.length} вариантами. Правильный ответ: "${currentVariants[correctAnswerIndex]}"`);
       }
-
-      // Start new question
-      currentQuestion = line.replace('<question>', '').trim();
+      let questionText = trimmedLine;
+      if (questionText.match(/^\d+(\.\d+)*\s*\./)) {
+        questionText = questionText.replace(/^\d+(\.\d+)*\s*\./, '').trim();
+      }
+      if (questionText.startsWith('<question>')) {
+        questionText = questionText.replace('<question>', '');
+      } else if (questionText.match(/^<question\s*>/)) {
+        questionText = questionText.replace(/^<question\s*>/, '');
+      }
+      currentQuestion = questionText.trim();
       currentVariants = [];
-      correctAnswerIndex = 0; // Assume first variant is correct
+      correctAnswerIndex = 0;
       console.log(`Обрабатываем новый вопрос: "${currentQuestion}"`);
-    } else if (line.startsWith('<variant>')) {
-      let variantText = line.replace('<variant>', '').trim();
-      // Remove trailing '/' if present
-      variantText = variantText.replace(/\/$/, '').trim();
-      if (currentQuestion && variantText && currentVariants.length < MAX_VARIANTS) {
-        currentVariants.push(variantText);
-        console.log(`Добавлен вариант: "${variantText}"`);
+    } else if (
+      trimmedLine.startsWith('<variant>') ||
+      trimmedLine.startsWith('<variant ') ||
+      trimmedLine.match(/^<variant\s*>/) ||
+      trimmedLine.match(/^\d+\s*\.\s*<variant>/) ||
+      trimmedLine.match(/^\d+\s*\.\s*<variant\s*>/)
+    ) {
+      let text = trimmedLine;
+      const isCorrectVariant = text.includes('+++');
+      if (text.match(/^\d+(\.\d+)*\s*\./)) {
+        text = text.replace(/^\d+(\.\d+)*\s*\./, '').trim();
+      }
+      if (text.startsWith('<variant>')) {
+        text = text.replace('<variant>', '');
+      } else if (text.match(/^<variant\s*>/)) {
+        text = text.replace(/^<variant\s*>/, '');
+      } else if (text.match(/^\d+\s*\.\s*<variant>/)) {
+        text = text.replace(/^\d+\s*\.\s*<variant>/, '');
+      } else if (text.match(/^\d+\s*\.\s*<variant\s*>/)) {
+        text = text.replace(/^\d+\s*\.\s*<variant\s*>/, '');
+      }
+      const cleanText = text.replace('+++', '').replace('$correct', '').trim();
+      if (currentQuestion && cleanText) {
+        if (isCorrectVariant && currentVariants.length < MAX_VARIANTS) {
+          correctAnswerIndex = currentVariants.length;
+          console.log(`Найден правильный ответ для вопроса "${currentQuestion}": "${cleanText}" (индекс ${correctAnswerIndex})`);
+        }
+        if (currentVariants.length < MAX_VARIANTS) {
+          currentVariants.push(cleanText);
+        }
       }
     }
   }
-
-  // Save the last question
-  if (currentQuestion && currentVariants.length > 0) {
+  if (currentQuestion) {
     if (currentVariants.length > MAX_VARIANTS) {
       console.warn(`Вопрос "${currentQuestion}" имеет ${currentVariants.length} вариантов. Оставляем только первые ${MAX_VARIANTS}.`);
       currentVariants = currentVariants.slice(0, MAX_VARIANTS);
     }
+    if (correctAnswerIndex >= currentVariants.length) {
+      correctAnswerIndex = 0;
+      console.warn(`Индекс правильного ответа превышает количество вариантов, устанавливаем первый вариант как правильный.`);
+    }
     questions.push({
       q: currentQuestion,
       variants: currentVariants,
-      answer: currentVariants[correctAnswerIndex] // First variant is correct
+      answer: currentVariants[correctAnswerIndex]
     });
     console.log(`Добавлен последний вопрос "${currentQuestion}" с ${currentVariants.length} вариантами. Правильный ответ: "${currentVariants[correctAnswerIndex]}"`);
   }
-
-  console.log(`Всего распознано ${questions.length} вопросов`);
+  console.log(`Всего распознано ${questions.length} вопросов с правильными ответами`);
   if (questions.length === 0) {
     console.warn('В тесте не найдено ни одного вопроса!');
+    return questions;
+  }
+  for (let i = 0; i < questions.length; i++) {
+    if (questions[i].variants.length === 0) {
+      console.warn(`Вопрос "${questions[i].q}" не имеет вариантов ответа!`);
+    }
+    console.log(`Вопрос ${i+1}: "${questions[i].q}" - правильный ответ: "${questions[i].answer}"`);
   }
   return questions;
 }
