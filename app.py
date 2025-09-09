@@ -14,7 +14,8 @@ app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
 TESTS_DIRS = {
     'main': 'attached_assets',   # Original tests directory
     'additional': 'additional_tests',  # New directory for additional tests
-    'uploaded': 'tests'  # Directory for user-uploaded tests
+    'uploaded': 'tests',  # Directory for user-uploaded tests
+    'full_2024': 'full_2024_tests'  # New directory for 2024 full tests
 }
 
 # Ensure all test directories exist
@@ -30,9 +31,10 @@ def index():
 def get_test_categories():
     """Return the list of test categories."""
     categories = {
-        'main': 'Основные тесты(в начале июня скнули)',
-        'additional': 'Дополнительные тесты(русс прощлый год)',
-        'uploaded': 'Загруженные тесты (пролый месяй каз)'
+        'main': 'Основные тесты (в начале июня скинули)',
+        'additional': 'Дополнительные тесты (русский прошлый год)',
+        'uploaded': 'Загруженные тесты (прошлый месяц каз)',
+        'full_2024': 'Полный относительно 2024'
     }
     return jsonify(categories)
 
