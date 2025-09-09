@@ -2,7 +2,6 @@ import os
 import logging
 from flask import Flask, render_template, jsonify, send_from_directory, request, redirect, url_for, flash
 import glob
-import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,38 +14,12 @@ app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
 TESTS_DIRS = {
     'main': 'attached_assets',   # Original tests directory
     'additional': 'additional_tests',  # New directory for additional tests
-    'uploaded': 'tests',  # Directory for user-uploaded tests
-    'full_2024': 'full_2024_tests'  # New directory for 2024 full tests
+    'uploaded': 'tests'  # Directory for user-uploaded tests
 }
 
 # Ensure all test directories exist
 for directory in TESTS_DIRS.values():
     os.makedirs(directory, exist_ok=True)
-
-# Function to sanitize and display filenames
-def sanitize_filename(filename):
-    """Convert filename to safe and readable format for frontend."""
-    # Extract number from filenames like __________________________96_____.txt
-    match = re.match(r'_+\d+_+\.txt$', filename)
-    if match:
-        number = re.search(r'\d+', filename).group()
-        display_name = f"Тест {number}"
-        safe_filename = f"test_{number}.txt"
-    else:
-        # Fallback for other filenames
-        safe_filename = ""
-        for c in filename:
-            if c.isalnum() or c == '.':
-                safe_filename += c
-            elif c.isspace():
-                safe_filename += '_'
-        safe_filename = re.sub(r'[^a-zA-Z0-9._]', '_', safe_filename)
-        if not safe_filename.endswith('.txt'):
-            safe_filename += '.txt'
-        display_name = safe_filename.replace('_', ' ').replace('.txt', '')
-    # Remove multiple consecutive underscores
-    safe_filename = re.sub(r'_+', '_', safe_filename)
-    return safe_filename, display_name
 
 @app.route('/')
 def index():
@@ -57,16 +30,15 @@ def index():
 def get_test_categories():
     """Return the list of test categories."""
     categories = {
-        'main': 'Каз 2024',
-        'additional': 'Рус 2024',
-        'uploaded': 'Каз 2025 ver 2',
-        'full_2024': 'Полный относительно 2024 (скинули под конец)'
+        'main': 'Основные тесты(в начале июня скнули)',
+        'additional': 'Дополнительные тесты(русс прощлый год)',
+        'uploaded': 'Загруженные тесты (пролый месяй каз)'
     }
     return jsonify(categories)
 
 @app.route('/tests/<category>')
 def get_tests(category):
-    """Return a list of available test files with display names for a specific category."""
+    """Return a list of available test files for a specific category."""
     try:
         if category not in TESTS_DIRS:
             return jsonify({"error": "Категория не найдена"}), 404
@@ -74,17 +46,9 @@ def get_tests(category):
         directory = TESTS_DIRS[category]
         # Get all .txt files in the specified directory
         test_files = [os.path.basename(f) for f in glob.glob(f"{directory}/*.txt")]
-        # Create list of {safe_filename, display_name} for each file
-        test_files_info = []
-        for f in test_files:
-            safe_filename, display_name = sanitize_filename(f)
-            test_files_info.append({
-                "filename": safe_filename,
-                "display_name": display_name
-            })
-        # Sort by display_name
-        test_files_info.sort(key=lambda x: x["display_name"])
-        return jsonify(test_files_info)
+        # Sort alphabetically
+        test_files.sort()
+        return jsonify(test_files)
     except Exception as e:
         logging.error(f"Error getting test files for category {category}: {e}")
         return jsonify([]), 500
@@ -101,14 +65,9 @@ def get_test_file(category, filename):
             return "Invalid filename", 400
         
         directory = TESTS_DIRS[category]
-        # Find the actual file that matches the sanitized filename
-        test_files = [os.path.basename(f) for f in glob.glob(f"{directory}/*.txt")]
-        for actual_filename in test_files:
-            safe_filename, _ = sanitize_filename(actual_filename)
-            if safe_filename == filename:
-                return send_from_directory(directory, actual_filename)
         
-        return "Файл не найден", 404
+        # Serve the file
+        return send_from_directory(directory, filename)
     except Exception as e:
         logging.error(f"Error serving test file {category}/{filename}: {e}")
         return "Файл не найден", 404
@@ -133,9 +92,21 @@ def upload_file():
         if file and file.filename and file.filename.endswith('.txt'):
             # Ensure valid filename
             filename = os.path.basename(str(file.filename))
-            # Sanitize filename
-            safe_filename, _ = sanitize_filename(filename)
+            # Transliterate Cyrillic characters and remove spaces and special characters
+            safe_filename = ""
+            for c in filename:
+                if c.isalnum() or c == '.':
+                    safe_filename += c
+                elif c.isspace():
+                    safe_filename += '_'
+                # Skip other special characters
             
+            # Make sure we have a valid filename after cleaning
+            if not safe_filename or safe_filename == '.txt':
+                safe_filename = 'test_file.txt'
+            elif not safe_filename.endswith('.txt'):
+                safe_filename += '.txt'
+                
             if '..' in safe_filename or '/' in safe_filename:
                 flash('Недопустимое имя файла', 'danger')
                 return redirect(request.url)
